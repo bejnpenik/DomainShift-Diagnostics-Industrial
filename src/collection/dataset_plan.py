@@ -1,18 +1,40 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Dict
 
 from collection.metadata import Metadata
 
 @dataclass(frozen=True)
 class SampleGroup:
-    codes: Dict[int, str]
-    metadata: Dict[int, Metadata]
+    """
+    Class specific files with metadata.
+
+    Args:
+        codes: Mapping from file codes to file names
+        metadata: Mapping from file codes to code metadata (sampling rate, condition, ...)
+
+    To do: This interface needs revision, because codes are maybe obsolete
+
+    """
+    codes: dict[int, str]
+    metadata: dict[int, Metadata]
 
 @dataclass(frozen=True)
 class DatasetPlan:
+    """
+    Specific domain files from collection.
+
+    Args:
+        dataset_name: Collection name. 
+        label: Domain specific name
+        sample_groups: Mapping for classes and SampleGroups.
+
+    To do:
+        dataset_name is missleading it shoud be collection_name. Also label should be domain_name.
+    """
     dataset_name: str
     label: str
-    sample_groups: Dict[str, SampleGroup]
+    sample_groups: dict[str, SampleGroup]
 
     @property
     def is_complete(self) -> bool:
@@ -35,7 +57,7 @@ class DatasetPlan:
         return [label for label, sg in self.sample_groups.items() if not sg.codes]
     
     @property
-    def class_sample_counts(self) -> Dict[str, int]:
+    def class_sample_counts(self) -> dict[str, int]:
         """
         Get number of unique codes (not files) per class.
         

@@ -1,0 +1,527 @@
+code_schema:
+    condition: 10000000
+    fault_arrangement: 100
+    fault_characteristic: 10
+    fault_combination: 1000
+    fault_size: 100000
+    fault_element: 1000000
+    fault_mode: 10000
+    sampling_rate: 1
+dirname: data/paderborn
+files:
+  N09_M07_F10_K001:
+    code: 20000000
+    realizations: 20
+    subdirectory: K001
+  N09_M07_F10_K002:
+    code: 20000000
+    realizations: 20
+    subdirectory: K002
+  N09_M07_F10_K003:
+    code: 20000000
+    realizations: 20
+    subdirectory: K003
+  N09_M07_F10_K004:
+    code: 20000000
+    realizations: 20
+    subdirectory: K004
+  N09_M07_F10_K005:
+    code: 20000000
+    realizations: 20
+    subdirectory: K005
+  N09_M07_F10_K006:
+    code: 20000000
+    realizations: 20
+    subdirectory: K006
+  N09_M07_F10_KA01:
+    code: 22111010
+    realizations: 20
+    subdirectory: KA01
+  N09_M07_F10_KA03:
+    code: 22221010
+    realizations: 20
+    subdirectory: KA03
+  N09_M07_F10_KA04:
+    code: 22141010
+    realizations: 20
+    subdirectory: KA04
+  N09_M07_F10_KA05:
+    code: 22121010
+    realizations: 20
+    subdirectory: KA05
+  N09_M07_F10_KA06:
+    code: 22221010
+    realizations: 20
+    subdirectory: KA06
+  N09_M07_F10_KA07:
+    code: 22131010
+    realizations: 20
+    subdirectory: KA07
+  N09_M07_F10_KA08:
+    code: 22231010
+    realizations: 20
+    subdirectory: KA08
+  N09_M07_F10_KA09:
+    code: 22231010
+    realizations: 20
+    subdirectory: KA09
+  N09_M07_F10_KA15:
+    code: 22151010
+    realizations: 20
+    subdirectory: KA15
+  N09_M07_F10_KA16:
+    code: 22242110
+    realizations: 20
+    subdirectory: KA16
+  N09_M07_F10_KA22:
+    code: 22141010
+    realizations: 20
+    subdirectory: KA22
+  N09_M07_F10_KA30:
+    code: 22152120
+    realizations: 20
+    subdirectory: KA30
+  N09_M07_F10_KI01:
+    code: 21111010
+    realizations: 20
+    subdirectory: KI01
+  N09_M07_F10_KI03:
+    code: 21121010
+    realizations: 20
+    subdirectory: KI03
+  N09_M07_F10_KI04:
+    code: 21143010
+    realizations: 20
+    subdirectory: KI04
+  N09_M07_F10_KI05:
+    code: 21121010
+    realizations: 20
+    subdirectory: KI05
+  N09_M07_F10_KI07:
+    code: 21221010
+    realizations: 20
+    subdirectory: KI07
+  N09_M07_F10_KI08:
+    code: 21221010
+    realizations: 20
+    subdirectory: KI08
+  N09_M07_F10_KI14:
+    code: 21143010
+    realizations: 20
+    subdirectory: KI14
+  N09_M07_F10_KI16:
+    code: 21341010
+    realizations: 20
+    subdirectory: KI16
+  N09_M07_F10_KI17:
+    code: 21142110
+    realizations: 20
+    subdirectory: KI17
+  N09_M07_F10_KI18:
+    code: 21241110
+    realizations: 20
+    subdirectory: KI18
+  N09_M07_F10_KI21:
+    code: 21141010
+    realizations: 20
+    subdirectory: KI21
+  N15_M01_F10_K001:
+    code: 30000000
+    realizations: 20
+    subdirectory: K001
+  N15_M01_F10_K002:
+    code: 30000000
+    realizations: 20
+    subdirectory: K002
+  N15_M01_F10_K003:
+    code: 30000000
+    realizations: 20
+    subdirectory: K003
+  N15_M01_F10_K004:
+    code: 30000000
+    realizations: 20
+    subdirectory: K004
+  N15_M01_F10_K005:
+    code: 30000000
+    realizations: 20
+    subdirectory: K005
+  N15_M01_F10_K006:
+    code: 30000000
+    realizations: 20
+    subdirectory: K006
+  N15_M01_F10_KA01:
+    code: 32111010
+    realizations: 20
+    subdirectory: KA01
+  N15_M01_F10_KA03:
+    code: 32221010
+    realizations: 20
+    subdirectory: KA03
+  N15_M01_F10_KA04:
+    code: 32141010
+    realizations: 20
+    subdirectory: KA04
+  N15_M01_F10_KA05:
+    code: 32121010
+    realizations: 20
+    subdirectory: KA05
+  N15_M01_F10_KA06:
+    code: 32221010
+    realizations: 20
+    subdirectory: KA06
+  N15_M01_F10_KA07:
+    code: 32131010
+    realizations: 20
+    subdirectory: KA07
+  N15_M01_F10_KA08:
+    code: 32231010
+    realizations: 20
+    subdirectory: KA08
+  N15_M01_F10_KA09:
+    code: 32231010
+    realizations: 20
+    subdirectory: KA09
+  N15_M01_F10_KA15:
+    code: 32151010
+    realizations: 20
+    subdirectory: KA15
+  N15_M01_F10_KA16:
+    code: 32242110
+    realizations: 20
+    subdirectory: KA16
+  N15_M01_F10_KA22:
+    code: 32141010
+    realizations: 20
+    subdirectory: KA22
+  N15_M01_F10_KA30:
+    code: 32152120
+    realizations: 20
+    subdirectory: KA30
+  N15_M01_F10_KI01:
+    code: 31111010
+    realizations: 20
+    subdirectory: KI01
+  N15_M01_F10_KI03:
+    code: 31121010
+    realizations: 20
+    subdirectory: KI03
+  N15_M01_F10_KI04:
+    code: 31143010
+    realizations: 20
+    subdirectory: KI04
+  N15_M01_F10_KI05:
+    code: 31121010
+    realizations: 20
+    subdirectory: KI05
+  N15_M01_F10_KI07:
+    code: 31221010
+    realizations: 20
+    subdirectory: KI07
+  N15_M01_F10_KI08:
+    code: 31221010
+    realizations: 20
+    subdirectory: KI08
+  N15_M01_F10_KI14:
+    code: 31143010
+    realizations: 20
+    subdirectory: KI14
+  N15_M01_F10_KI16:
+    code: 31341010
+    realizations: 20
+    subdirectory: KI16
+  N15_M01_F10_KI17:
+    code: 31142110
+    realizations: 20
+    subdirectory: KI17
+  N15_M01_F10_KI18:
+    code: 31241110
+    realizations: 20
+    subdirectory: KI18
+  N15_M01_F10_KI21:
+    code: 31141010
+    realizations: 20
+    subdirectory: KI21
+  N15_M07_F04_K001:
+    code: 40000000
+    realizations: 20
+    subdirectory: K001
+  N15_M07_F04_K002:
+    code: 40000000
+    realizations: 20
+    subdirectory: K002
+  N15_M07_F04_K003:
+    code: 40000000
+    realizations: 20
+    subdirectory: K003
+  N15_M07_F04_K004:
+    code: 40000000
+    realizations: 20
+    subdirectory: K004
+  N15_M07_F04_K005:
+    code: 40000000
+    realizations: 20
+    subdirectory: K005
+  N15_M07_F04_K006:
+    code: 40000000
+    realizations: 20
+    subdirectory: K006
+  N15_M07_F04_KA01:
+    code: 42111010
+    realizations: 20
+    subdirectory: KA01
+  N15_M07_F04_KA03:
+    code: 42221010
+    realizations: 20
+    subdirectory: KA03
+  N15_M07_F04_KA04:
+    code: 42141010
+    realizations: 20
+    subdirectory: KA04
+  N15_M07_F04_KA05:
+    code: 42121010
+    realizations: 20
+    subdirectory: KA05
+  N15_M07_F04_KA06:
+    code: 42221010
+    realizations: 20
+    subdirectory: KA06
+  N15_M07_F04_KA07:
+    code: 42131010
+    realizations: 20
+    subdirectory: KA07
+  N15_M07_F04_KA08:
+    code: 42231010
+    realizations: 20
+    subdirectory: KA08
+  N15_M07_F04_KA09:
+    code: 42231010
+    realizations: 20
+    subdirectory: KA09
+  N15_M07_F04_KA15:
+    code: 42151010
+    realizations: 20
+    subdirectory: KA15
+  N15_M07_F04_KA16:
+    code: 42242110
+    realizations: 20
+    subdirectory: KA16
+  N15_M07_F04_KA22:
+    code: 42141010
+    realizations: 20
+    subdirectory: KA22
+  N15_M07_F04_KA30:
+    code: 42152120
+    realizations: 20
+    subdirectory: KA30
+  N15_M07_F04_KI01:
+    code: 41111010
+    realizations: 20
+    subdirectory: KI01
+  N15_M07_F04_KI03:
+    code: 41121010
+    realizations: 20
+    subdirectory: KI03
+  N15_M07_F04_KI04:
+    code: 41143010
+    realizations: 20
+    subdirectory: KI04
+  N15_M07_F04_KI05:
+    code: 41121010
+    realizations: 20
+    subdirectory: KI05
+  N15_M07_F04_KI07:
+    code: 41221010
+    realizations: 20
+    subdirectory: KI07
+  N15_M07_F04_KI08:
+    code: 41221010
+    realizations: 20
+    subdirectory: KI08
+  N15_M07_F04_KI14:
+    code: 41143010
+    realizations: 20
+    subdirectory: KI14
+  N15_M07_F04_KI16:
+    code: 41341010
+    realizations: 20
+    subdirectory: KI16
+  N15_M07_F04_KI17:
+    code: 41142110
+    realizations: 20
+    subdirectory: KI17
+  N15_M07_F04_KI18:
+    code: 41241110
+    realizations: 20
+    subdirectory: KI18
+  N15_M07_F04_KI21:
+    code: 41141010
+    realizations: 20
+    subdirectory: KI21
+  N15_M07_F10_K001:
+    code: 10000000
+    realizations: 20
+    subdirectory: K001
+  N15_M07_F10_K002:
+    code: 10000000
+    realizations: 20
+    subdirectory: K002
+  N15_M07_F10_K003:
+    code: 10000000
+    realizations: 20
+    subdirectory: K003
+  N15_M07_F10_K004:
+    code: 10000000
+    realizations: 20
+    subdirectory: K004
+  N15_M07_F10_K005:
+    code: 10000000
+    realizations: 20
+    subdirectory: K005
+  N15_M07_F10_K006:
+    code: 10000000
+    realizations: 20
+    subdirectory: K006
+  N15_M07_F10_KA01:
+    code: 12111010
+    realizations: 20
+    subdirectory: KA01
+  N15_M07_F10_KA03:
+    code: 12221010
+    realizations: 20
+    subdirectory: KA03
+  N15_M07_F10_KA04:
+    code: 12141010
+    realizations: 20
+    subdirectory: KA04
+  N15_M07_F10_KA05:
+    code: 12121010
+    realizations: 20
+    subdirectory: KA05
+  N15_M07_F10_KA06:
+    code: 12221010
+    realizations: 20
+    subdirectory: KA06
+  N15_M07_F10_KA07:
+    code: 12131010
+    realizations: 20
+    subdirectory: KA07
+  N15_M07_F10_KA08:
+    code: 12231010
+    realizations: 20
+    subdirectory: KA08
+  N15_M07_F10_KA09:
+    code: 12231010
+    realizations: 20
+    subdirectory: KA09
+  N15_M07_F10_KA15:
+    code: 12151010
+    realizations: 20
+    subdirectory: KA15
+  N15_M07_F10_KA16:
+    code: 12242110
+    realizations: 20
+    subdirectory: KA16
+  N15_M07_F10_KA22:
+    code: 12141010
+    realizations: 20
+    subdirectory: KA22
+  N15_M07_F10_KA30:
+    code: 12152120
+    realizations: 20
+    subdirectory: KA30
+  N15_M07_F10_KI01:
+    code: 11111010
+    realizations: 20
+    subdirectory: KI01
+  N15_M07_F10_KI03:
+    code: 11121010
+    realizations: 20
+    subdirectory: KI03
+  N15_M07_F10_KI04:
+    code: 11143010
+    realizations: 20
+    subdirectory: KI04
+  N15_M07_F10_KI05:
+    code: 11121010
+    realizations: 20
+    subdirectory: KI05
+  N15_M07_F10_KI07:
+    code: 11221010
+    realizations: 20
+    subdirectory: KI07
+  N15_M07_F10_KI08:
+    code: 11221010
+    realizations: 20
+    subdirectory: KI08
+  N15_M07_F10_KI14:
+    code: 11143010
+    realizations: 20
+    subdirectory: KI14
+  N15_M07_F10_KI16:
+    code: 11341010
+    realizations: 20
+    subdirectory: KI16
+  N15_M07_F10_KI17:
+    code: 11142110
+    realizations: 20
+    subdirectory: KI17
+  N15_M07_F10_KI18:
+    code: 11241110
+    realizations: 20
+    subdirectory: KI18
+  N15_M07_F10_KI21:
+    code: 11141010
+    realizations: 20
+    subdirectory: KI21
+filetype: mat
+header:
+  condition:
+    1:
+      force: 1000
+      load: 0.7
+      speed: 1500
+    2:
+      force: 1000
+      load: 0.7
+      speed: 900
+    3:
+      force: 1000
+      load: 0.1
+      speed: 1500
+    4:
+      force: 400
+      load: 0.7
+      speed: 1500
+  fault_arrangement:
+    0: no repetition
+    1: random
+  fault_characteristic:
+    0: none
+    1: single point
+    2: distributed
+  fault_combination:
+    0: none
+    1: S
+    2: R
+    3: M
+  fault_size:
+    0: 0
+    1: 1
+    2: 2
+    3: 3
+    4: 4
+    5: 5
+  fault_element:
+    0: normal
+    1: inner ring
+    2: outer ring
+  fault_mode:
+    0: none
+    1: AEDM
+    2: AENG
+    3: ADRILL
+    4: FPITT
+    5: PDI
+  sampling_rate:
+    0: 64000
+name: paderborn

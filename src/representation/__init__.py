@@ -10,8 +10,17 @@ from collection import Metadata
 
 class Processor(Protocol):
     @property
-    def name(self) -> str: ...
-    def __call__(self, data: npt.ArrayLike, metadata: Metadata) -> torch.Tensor: ...
+    def name(self) -> str: 
+        ...
+    def __call__(self, data: npt.ArrayLike, metadata: Metadata) -> torch.Tensor: 
+        ...
+
+class ProcessorConfig(Protocol):
+    @property
+    def name(self)->str:
+        ...
+
+
 
 
 def create_processor(config) -> Processor:

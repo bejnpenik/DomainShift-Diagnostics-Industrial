@@ -1,17 +1,21 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import Tuple, List, Dict, FrozenSet
 
 @dataclass(frozen=True)
 class Rule:
-    fixed: Dict[str, int | str] = field(default_factory=dict)
-    resolve: Dict[str, str | List | int] = field(default_factory=dict)
+    """
+    Task rule specification. For default values of resolves and class specific overrides.
+    """
+    fixed: dict[str, int | str] = field(default_factory=dict)
+    resolve: dict[str, str | list | int] = field(default_factory=dict)
 @dataclass(frozen=True)
 class InteractionRule:
     """Single interaction rule: when field=value, then other_field must be in allowed_values"""
     field: str
     trigger_value: int
     constrained_field: str
-    allowed_values: FrozenSet[int]
+    allowed_values: frozenset[int]
     
     @classmethod
     def from_constraint(cls, field: str, trigger_value: int, 
@@ -24,21 +28,21 @@ class InteractionRule:
         
         return cls(field, trigger_value, constrained_field, allowed_values)
     
-    def applies_to(self, combo: Dict) -> bool:
+    def applies_to(self, combo: dict) -> bool:
         """Check if this rule applies to the combo"""
         return combo.get(self.field) == self.trigger_value
     
-    def is_satisfied_by(self, combo: Dict) -> bool:
+    def is_satisfied_by(self, combo: dict) -> bool:
         """Check if combo satisfies this rule"""
         return combo.get(self.constrained_field) in self.allowed_values
 
 @dataclass(frozen=True)
 class Interactions:
     """Collection of interaction rules"""
-    rules: Tuple[InteractionRule, ...]
+    rules: tuple[InteractionRule, ...]
     
     @classmethod
-    def from_dict(cls, interactions_dict: Dict):
+    def from_dict(cls, interactions_dict: dict):
         """
         Flatten nested dict into list of rules.
         
@@ -69,7 +73,7 @@ class Interactions:
         
         return cls(tuple(rules))
     
-    def is_satisfied_by(self, combo: Dict) -> bool:
+    def is_satisfied_by(self, combo: dict) -> bool:
         """Check if combo satisfies all applicable rules"""
         return all(
             rule.is_satisfied_by(combo)
@@ -86,11 +90,11 @@ class Task:
     plus collection-specific construction rules.
     """
     target: str
-    domain_factors: Tuple[str, ...]
+    domain_factors: tuple[str, ...]
     defaults: Rule = field(default_factory=Rule)
-    classes: Dict[str, Rule] = field(default_factory=dict)
+    classes: dict[str, Rule] = field(default_factory=dict)
     interactions: Interactions|None = None
-    class_interactions: Dict[str, Interactions]|None = None
+    class_interactions: dict[str, Interactions]|None = None
 
     def __post_init__(self):
         if self.target in self.defaults.fixed.keys():

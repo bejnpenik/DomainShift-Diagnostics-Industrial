@@ -19,10 +19,18 @@ class Normalisator:
         if mode == "pretrained":
             if mean is None or std is None:
                 raise ValueError("Pretrained normalization requires mean/std")
-            self._fitted = True 
+            self._fitted = True
 
         if mode == "sample" and (mean is not None or std is not None):
             raise ValueError("Sample normalization does not use mean/std")
+        
+        if mode == "none":
+            if (mean is not None or std is not None):
+                raise ValueError("No normalization does not use mean/std")
+            self.mode = 'pretrained'
+            self.mean = torch.tensor(0.0)
+            self.std = torch.tensor(1.0)
+            self._fitted = True
 
     def fit(self, x: torch.Tensor):
         if self.mode != "dataset":

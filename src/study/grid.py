@@ -1,3 +1,14 @@
+from __future__ import annotations
+from typing import Dict, Any, Tuple, Callable, Iterator, List
+from dataclasses import dataclass
+
+from experiment.config import ExperimentConfig
+from study.design import ExperimentSpec, StudyDesign
+from collection.task import Task
+
+import itertools
+
+@dataclass
 class DependentFactor:
     """
     Specification for a factor whose value depends on other factors.
@@ -7,7 +18,7 @@ class DependentFactor:
         mapping: Dict mapping factor values to this factor's value
         default: Optional default if no mapping matches
     """
-    depends_on: str | tuple[str, ...]
+    depends_on: str | Tuple[str, ...]
     mapping: Dict[Any, Any]
     default: Any = None
     
@@ -116,7 +127,7 @@ class StudyGridBuilder:
             self._factors[name] = tuple(values)
         return self
     
-    def set_independent(self, **factors: Any) -> 'StudyGridBuilder':
+    def set_independent(self, **factors: Any) -> StudyGridBuilder:
         """
         Set independent factors (constant across all configs).
         
@@ -135,7 +146,7 @@ class StudyGridBuilder:
         depends_on: str | tuple[str, ...],
         mapping: Dict[Any, Any],
         default: Any = None
-    ) -> 'StudyGridBuilder':
+    ) -> StudyGridBuilder:
         """
         Set a dependent factor.
         
@@ -158,7 +169,7 @@ class StudyGridBuilder:
     def set_name_template(
         self, 
         template: str | Callable[[Dict[str, Any]], str]
-    ) -> 'StudyGridBuilder':
+    ) -> StudyGridBuilder:
         """
         Set template for generating config names.
         
@@ -275,22 +286,12 @@ class StudyGridBuilder:
             config = ExperimentConfig(
                 name=params.get('name', 'unnamed'),
                 processor_config=params['processor_config'],
-                model_name=params.get('model_name', params['model_class'].__name__),
-                model_class=params['model_class'],
-                model_params=params.get('model_params', {}),
+                trainer_config=params['trainer_config'],
+                model_config=params['model_config'],
                 file_sampling=params.get('file_sampling'),
-                normalization=params.get('normalization', 'sample'),
+                normalization=params.get('normalization', 'none'),
                 normalization_vals=params.get('normalization_vals'),
                 train_val_split_ratio=params.get('train_val_split_ratio', 0.33),
-                max_epochs=params.get('max_epochs', 2000),
-                optimizer_name=params.get('optimizer_name', 'adamw'),
-                lr=params.get('lr', 1e-3),
-                weight_decay=params.get('weight_decay', 1e-4),
-                momentum=params.get('momentum', 0.9),
-                early_stop=params.get('early_stop', (10, 1e-3)),
-                train_noise=params.get('train_noise', (0.1, 0.1)),
-                device=params.get('device', 'cuda'),
-                train_verbose_level=params.get('train_verbose_level', 100),
                 random_seed=params.get('random_seed', 42)
             )
             configs.append(config)

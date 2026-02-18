@@ -120,6 +120,11 @@ class Experiment:
             train_norm.fit(X_train)
             X_train = train_norm(X_train)
             X_val = train_norm(X_val)
+        elif self._config.normalization == 'none':
+            train_norm = Normalisator(mode='none')
+            train_norm.fit(X_train)
+            X_train = train_norm(X_train)
+            X_val = train_norm(X_val)
         else:
             raise ValueError(f'Unknown normalization mode: {self._config.normalization}')
         
@@ -135,7 +140,7 @@ class Experiment:
         
         # Create model
         num_classes = len(cls_labels)
-        model = self._config.model_class(num_classes=num_classes, **self._config.model_params)
+        model = self._config.model_config.create_model(num_classes=num_classes)
         
         # Train
         trainer = Trainer(self._config.trainer_config)
@@ -189,11 +194,12 @@ class Experiment:
             print(f"\nTraining on: {train_plan.label}")
             
             # Train
-            train_result = self.train_on_plan(train_plan)
+            experiment_train_result = self.train_on_plan(train_plan)
+            train_result = experiment_train_result.train_result
             
             # Training metadata
             train_metadata = {
-                'train_epoch_nbr': train_result.train_epoch_nbr,
+                'train_epoch_nbr': train_result.epochs_run,
                 'train_loss': train_result.train_loss,
                 'train_acc': train_result.train_acc,
                 'val_loss': train_result.val_loss,
@@ -207,16 +213,16 @@ class Experiment:
                 
                 confusion_mat, test_label = self.evaluate_on_plan(
                     train_result.model,
-                    train_result.normalisator,
+                    experiment_train_result.normalisator,
                     test_plan,
-                    train_result.cls_labels
+                    experiment_train_result.cls_labels
                 )
                 
                 confusion_matrices[test_label] = confusion_mat
             
             domain_solutions.append(DomainSolution(
-                train_dataset_name=train_result.dataset_label,
-                class_labels=train_result.cls_labels,
+                train_dataset_name=experiment_train_result.dataset_label,
+                class_labels=experiment_train_result.cls_labels,
                 seed=self._config.random_seed,
                 train_metadata=train_metadata,
                 confusion_matrices=confusion_matrices
@@ -243,7 +249,7 @@ class Experiment:
         train_result = experiment_train_result.train_result
         
         train_metadata = {
-            'train_epoch_nbr': train_result.train_epoch_nbr,
+            'train_epoch_nbr': train_result.epochs_run,
             'train_loss': train_result.train_loss,
             'train_acc': train_result.train_acc,
             'val_loss': train_result.val_loss,
@@ -257,16 +263,16 @@ class Experiment:
             
             confusion_mat, test_label = self.evaluate_on_plan(
                 train_result.model,
-                train_result.normalisator,
+                experiment_train_result.normalisator,
                 test_plan,
-                train_result.cls_labels
+                experiment_train_result.cls_labels
             )
             
             confusion_matrices[test_label] = confusion_mat
         
         return DomainSolution(
-            train_dataset_name=train_result.dataset_label,
-            class_labels=train_result.cls_labels,
+            train_dataset_name=experiment_train_result.dataset_label,
+            class_labels=experiment_train_result.cls_labels,
             seed=self._config.random_seed,
             train_metadata=train_metadata,
             confusion_matrices=confusion_matrices

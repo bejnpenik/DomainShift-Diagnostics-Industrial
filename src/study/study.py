@@ -1,7 +1,8 @@
 from pathlib import Path
 from typing import Optional, List
+from datetime import datetime
+import dataclasses, pickle
 
-import dataclasses, pickle, datetime
 
 from collection.collection import DatasetCollection
 from reader.reader import BaseFileReader

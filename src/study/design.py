@@ -101,7 +101,7 @@ class StudyDesign:
         for spec in self.experiment_specs:
             lines.append(
                 f"  - {spec.name}: {spec.num_domains} domains, "
-                f"{spec.config.model_class.__name__}, "
+                f"{spec.config.model_class_name}, "
                 f"processor={spec.processor_name}"
             )
         return '\n'.join(lines)

@@ -10,6 +10,9 @@ import itertools
 
 
 class DatasetCollection:
+    """
+    DatasetCollection class
+    """
     @staticmethod
     def check_attribute_value(attribute:int, attribute_name:str):
         if (attribute < 0 or attribute > 9):
@@ -73,17 +76,12 @@ class DatasetCollection:
     
     def _validate_task(self, task:Task):
         target = task.target
-        #depends = task.depends
+        domain_factors = task.domain_factors
         defaults = task.defaults
         classes = task.classes
 
         if target not in self.header:
             raise ValueError(f'Unknown target {target} specified in task!')
-
-        #depends = depends or frozenset(k for k in self.header if k != target)
-
-        #if len(depends) > len(self.header) - 1:
-        #    raise ValueError(f'Depends have more arguments {len(depends)} than expected {len(self.header)}')
         
         if defaults.fixed.keys() - self.header.keys():
             missing = defaults.fixed.keys() - self.header.keys()

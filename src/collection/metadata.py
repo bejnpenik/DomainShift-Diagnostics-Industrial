@@ -4,6 +4,12 @@ from collections.abc import Mapping
 
 @dataclass(frozen=True)
 class Metadata(Mapping):
+    """
+    General metadata container. Creates object from dict with attribute accessor mechanisms.
+
+    Args:
+        _data: Mapping from which to construct.
+    """
     _data: dict = field(default_factory=dict)
 
     def __getattr__(self, name):
