@@ -1,8 +1,8 @@
 from collections import defaultdict
 from pathlib import Path
-from collection.task import Task
-from collection.dataset_plan import DatasetPlan, SampleGroup
-from collection.metadata import Metadata
+from .task import Task
+from .dataset_plan import DatasetPlan, SampleGroup
+from .metadata import Metadata
 
 
 import yaml
@@ -386,11 +386,6 @@ class DatasetCollection:
                 flt_vals = [v for v in flt_vals if v not in exclude]
 
             filters[flt] = tuple(flt_vals)
-
-        
-                
-
-        #print(filters.values())
 
         filter_combinations = []
 

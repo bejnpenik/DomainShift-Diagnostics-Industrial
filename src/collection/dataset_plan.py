@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from collection.metadata import Metadata
+from .metadata import Metadata
 
 @dataclass(frozen=True)
 class SampleGroup:
