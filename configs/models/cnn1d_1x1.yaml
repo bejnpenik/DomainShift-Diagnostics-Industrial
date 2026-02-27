@@ -1,0 +1,21 @@
+name: cnn1d_default
+type: 1d
+
+encoder:
+  - [conv, 1, 2, {k: 7, s: 1, p: 0}]
+  - [pool, {k: 2, s: 2, p: 1}]
+  - [dropout, 0.1]
+  - [conv, 2, 4, {k: 5, s: 1, p: 0}]
+  - [pool, {k: 2, s: 2, p: 1}]
+  - [dropout, 0.1]
+  - [conv, 4, 8, {k: 3, s: 1, p: 0}]
+  - [pool, {k: 2, s: 2, p: 1}]
+
+aggregator:
+  type: adaptive
+  levels: 1
+
+head:
+  depth: 1
+  dropout: 0.1
+  act: relu
