@@ -1,0 +1,13 @@
+type: signal
+name: raw_48k
+
+resampling:
+  target_sampling_rate: 48000
+  max_bandwidth_factor: 0.5
+
+segmentation:
+  window_duration: 0.05
+  window_overlap: 0.2
+
+view:
+  type: raw

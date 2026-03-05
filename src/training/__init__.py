@@ -1,3 +1,3 @@
-from training.early_stopping import EarlyStopper
-from training.config import TrainerConfig, TrainResult
-from training.trainer import Trainer
+from .early_stopping import EarlyStopper
+from .config import TrainerConfig, TrainResult
+from .trainer import Trainer

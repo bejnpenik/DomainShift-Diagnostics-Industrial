@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from model.modules import *
+from .modules import *
 
 class Encoder1D(nn.Module):
     def __init__(self, input_channels:int=1, dropout_level:float=0.1):

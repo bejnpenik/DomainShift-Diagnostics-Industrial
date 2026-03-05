@@ -15,7 +15,7 @@ from typing import Dict, Optional, Tuple
 import numpy as np
 import numpy.typing as npt
 
-from results.containers import DomainSolution, MultiDomainSolution
+from .containers import DomainSolution, MultiDomainSolution
 
 
 # =============================================================================

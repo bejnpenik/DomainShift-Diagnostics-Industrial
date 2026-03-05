@@ -8,21 +8,21 @@ from sklearn.model_selection import train_test_split
 
 from dataclasses import dataclass
 
-from collection import Task
-from collection import DatasetCollection
-from collection import DatasetPlan
-from reader import BaseFileReader
-from experiment import ExperimentConfig
-from experiment import FileSampler
-from experiment import DomainDataset
+from ..collection import Task
+from ..collection import DatasetCollection
+from ..collection import DatasetPlan
+from ..reader import BaseFileReader
+from .config import ExperimentConfig
+from .sampling import FileSampler
+from .dataset import DomainDataset
 
-from normalization import Normalisator
+from ..normalization import Normalisator
 
-from training import Trainer, TrainResult
+from ..training import Trainer, TrainResult
 
-from results import DomainSolution, MultiDomainSolution, RepeatedMultiDomainSolution
+from ..results import DomainSolution, MultiDomainSolution, RepeatedMultiDomainSolution
 
-from representation import create_processor
+from ..representation import create_processor
 
 def set_seed(seed: int):
     """Set random seed for reproducibility."""

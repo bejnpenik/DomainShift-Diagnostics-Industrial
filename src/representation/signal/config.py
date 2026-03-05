@@ -5,7 +5,7 @@ from pydantic import Discriminator
 from typing import Annotated
 from typing import Literal
 
-from representation.signal.view import RawSignalView, STFTSignalView
+from .view import RawSignalView, STFTSignalView
 
 
 # View-specific configs

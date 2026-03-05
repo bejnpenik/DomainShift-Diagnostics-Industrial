@@ -1,4 +1,4 @@
-name: cnn2d_1x1
+name: cnn2d_multihead
 type: 2d
 
 encoder:
@@ -12,10 +12,10 @@ encoder:
   - [pool, {k: 2, s: 2, p: 0}]
 
 aggregator:
-  type: adaptive
-  levels: 1
+  type: multihead
+  levels: [16,4,1]
 
 head:
-  depth: 1
+  depth: 2
   dropout: 0.1
   act: relu

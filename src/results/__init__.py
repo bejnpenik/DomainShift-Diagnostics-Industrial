@@ -1,5 +1,5 @@
-from results.containers import DomainSolution, MultiDomainSolution, RepeatedMultiDomainSolution, StudySolution, StudySolutionBuilder
-from results.metrics import (compute_accuracy, 
+from .containers import DomainSolution, MultiDomainSolution, RepeatedMultiDomainSolution, StudySolution, StudySolutionBuilder
+from .metrics import (compute_accuracy, 
     compute_precision_per_class,
     compute_recall_per_class,
     compute_f1_per_class,
@@ -9,4 +9,4 @@ from results.metrics import (compute_accuracy,
     ClassMetrics,
     ConfusionMatrixMetrics,
 )
-from results.exporter import ResultsExporter, CSVExporter
+from .exporter import ResultsExporter, CSVExporter

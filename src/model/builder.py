@@ -35,7 +35,7 @@ import yaml
 import torch
 import torch.nn as nn
 
-from model.modules import (
+from .modules import (
     Conv1D, Conv2D, Pool1D, Pool2D,
     AdaptivePool1D, AdaptivePool2D,
     MultiHeadPool1D, MultiHeadPool2D,

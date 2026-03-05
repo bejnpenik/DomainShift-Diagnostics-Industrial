@@ -2,9 +2,9 @@ from __future__ import annotations
 from typing import Dict, Any, Tuple, Callable, Iterator, List
 from dataclasses import dataclass
 
-from experiment.config import ExperimentConfig
-from study.design import ExperimentSpec, StudyDesign
-from collection.task import Task
+from ..experiment.config import ExperimentConfig
+from .design import ExperimentSpec, StudyDesign
+from ..collection.task import Task
 
 import itertools
 
@@ -111,7 +111,7 @@ class StudyGridBuilder:
         self._dependent: Dict[str, DependentFactor] = {}
         self._name_template: str | Callable[[Dict], str] | None = None
     
-    def set_factors(self, **factors: Tuple[Any, ...]) -> 'StudyGridBuilder':
+    def set_factors(self, **factors: Tuple[Any, ...]) -> StudyGridBuilder:
         """
         Set varying factors. All combinations will be explored.
         
@@ -275,11 +275,11 @@ class StudyGridBuilder:
     def build_experiment_configs(self) -> List[ExperimentConfig]:
         """
         Build ExperimentConfig objects from the grid.
-        
+
         Returns:
             List of ExperimentConfig instances
         """
-        
+
         configs = []
         for params in self.build():
             # Extract ExperimentConfig fields
@@ -295,9 +295,9 @@ class StudyGridBuilder:
                 random_seed=params.get('random_seed', 42)
             )
             configs.append(config)
-        
+
         return configs
-    
+
     def build_study_design(
         self,
         study_name: str,
@@ -308,18 +308,18 @@ class StudyGridBuilder:
     ) -> StudyDesign:
         """
         Build complete StudyDesign from the grid.
-        
+
         Args:
             study_name: Name for the study
             task: Task definition
             filter_combinations: Domain filter combinations
             seeds: Random seeds for repetition
             description: Optional study description
-            
+
         Returns:
             StudyDesign ready to run
         """
-        
+
         specs = []
         for config in self.build_experiment_configs():
             spec = ExperimentSpec(
@@ -328,7 +328,7 @@ class StudyGridBuilder:
                 config=config
             )
             specs.append(spec)
-        
+
         return StudyDesign(
             name=study_name,
             experiment_specs=tuple(specs),
@@ -416,9 +416,8 @@ def build_grid_from_dicts(
     
     # Parse and set dependent factors
     for factor_name, dep_spec in study_dependent_factors.items():
-        # Determine dependency structure
-        depends_on, mapping = _parse_dependent_spec(dep_spec)
-        builder.set_dependent(factor_name, depends_on, mapping)
+        depends_on, mapping, default = _parse_dependent_spec(dep_spec)
+        builder.set_dependent(factor_name, depends_on, mapping, default)
     
     if name_template:
         builder.set_name_template(name_template)
@@ -426,50 +425,56 @@ def build_grid_from_dicts(
     return builder
 
 
-def _parse_dependent_spec(spec: Dict) -> Tuple[str | Tuple[str, ...], Dict]:
+def _parse_dependent_spec(spec: Dict) -> Tuple[str | Tuple[str, ...], Dict, Any]:
     """
-    Parse dependent factor specification to extract depends_on and mapping.
-    
-    Handles both simple and nested dependencies.
+    Parse dependent factor specification to extract depends_on, mapping, and default.
+
+    Handles two formats:
+
+    Explicit (YAML-style)::
+
+        {'depends_on': 'optimizer_name', 'mapping': {'adamw': 0.001}, 'default': None}
+        {'depends_on': ['model_type', 'model_variant'], 'mapping': {'1d': {'1x1': ...}}}
+
+    Implicit (heuristic from dict shape)::
+
+        {'optimizer_name': {'adamw': 0.001, 'sgd': 0.01}}
+        {'outer_factor': {'outer_val': {'inner_factor': {'inner_val': result}}}}
     """
-    # Check if it's a simple dependency (values are not dicts)
+    # --- explicit format: has 'depends_on' and 'mapping' keys ---
+    if 'depends_on' in spec and 'mapping' in spec:
+        depends_on_raw = spec['depends_on']
+        if isinstance(depends_on_raw, list):
+            depends_on = depends_on_raw[0] if len(depends_on_raw) == 1 else tuple(depends_on_raw)
+        else:
+            depends_on = depends_on_raw
+        return depends_on, spec['mapping'], spec.get('default')
+
+    # --- implicit / heuristic format ---
     first_key = next(iter(spec.keys()))
     first_value = spec[first_key]
-    
+
     if not isinstance(first_value, dict):
-        # Simple dependency: {dep_value: result}
-        # Need to find which factor this depends on - it's the outer key
-        return first_key, spec[first_key] if isinstance(spec[first_key], dict) else spec
-    
-    # Check for nested structure
-    # Format: {outer_factor: {outer_val: {inner_factor: {inner_val: result}}}}
-    # or: {outer_factor: {outer_val: result}}
-    
+        return first_key, spec[first_key] if isinstance(spec[first_key], dict) else spec, None
+
     outer_factor = first_key
     outer_mapping = first_value
-    
-    # Check if values are further nested
+
     first_outer_val = next(iter(outer_mapping.keys()))
     first_inner = outer_mapping[first_outer_val]
-    
+
     if isinstance(first_inner, dict):
-        # Check if inner dict has factor names as keys or values as keys
         first_inner_key = next(iter(first_inner.keys()))
         first_inner_val = first_inner[first_inner_key]
-        
+
         if isinstance(first_inner_val, dict):
-            # Nested: {outer_factor: {outer_val: {inner_factor: {inner_val: result}}}}
             inner_factor = first_inner_key
-            
-            # Restructure mapping: {outer_val: {inner_val: result}}
-            new_mapping = {}
-            for outer_val, inner_dict in outer_mapping.items():
-                new_mapping[outer_val] = inner_dict[inner_factor]
-            
-            return (outer_factor, inner_factor), new_mapping
+            new_mapping = {
+                outer_val: inner_dict[inner_factor]
+                for outer_val, inner_dict in outer_mapping.items()
+            }
+            return (outer_factor, inner_factor), new_mapping, None
         else:
-            # Simple nested: {outer_factor: {outer_val: result}}
-            return outer_factor, outer_mapping
+            return outer_factor, outer_mapping, None
     else:
-        # Simple: {dep_factor: {dep_val: result}}
-        return outer_factor, outer_mapping
+        return outer_factor, outer_mapping, None

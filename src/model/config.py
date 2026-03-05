@@ -30,7 +30,6 @@ class ModelConfig:
         The returned config uses the YAML builder as its model_class.
 
         """
-        from model.builder import build_model
         name = cfg.get("name", "unnamed")
 
         return cls(
@@ -60,8 +59,11 @@ class _YAMLModelFactory:
         self._cfg = cfg
 
     def __call__(self, num_classes: int, **kwargs: Any) -> nn.Module:
-        from model.builder import build_model
+        from .builder import build_model
         return build_model(self._cfg, num_classes)
 
     def __repr__(self) -> str:
         return f"_YAMLModelFactory(name={self._cfg.get('name', '?')})"
+    @property
+    def __name__(self) -> str:
+        return self._cfg.get('name', 'unnamed')

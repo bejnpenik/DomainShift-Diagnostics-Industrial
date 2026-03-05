@@ -2,7 +2,7 @@ import numpy as np
 
 from scipy.io import loadmat
 from pathlib import Path
-from collection import Metadata
+from ..collection import Metadata
 
 
 class BaseFileReader:

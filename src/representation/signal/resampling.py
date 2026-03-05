@@ -14,13 +14,13 @@ class Resampler:
         q = sampling_rate / target_sampling_rate
         q = floor(q) if abs(floor(q)-q) < abs(ceil(q) - q) else ceil(q)
 
-        return decimate(x, q, ftype = 'iir', zero_phase = True), self._sampling_rate / q
+        return decimate(x, q, ftype = 'iir', zero_phase = True), sampling_rate / q
     
     def _resample(self, x:npt.ArrayLike, sampling_rate:int, target_sampling_rate:int)-> Tuple:
         n = x.shape[0]
         n_out = n * target_sampling_rate / sampling_rate
 
-        if n_out.is_integer():
+        if float(n_out).is_integer():
             return resample(x, int(n_out)), target_sampling_rate
         else:
             n_out = ceil(n_out)

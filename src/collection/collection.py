@@ -89,7 +89,7 @@ class DatasetCollection:
             raise ValueError(f'Arguments {missing_str} in depends not present in dataset collection definition')
         
         if defaults.resolve.keys() - self.header.keys():
-            missing = defaults.resolves.keys() - self.header.keys()
+            missing = defaults.resolve.keys() - self.header.keys()
             missing_str = ', '.join(map(str, sorted(missing)))
             raise ValueError(f'Arguments {missing_str} in default resolving dictionary not present in dataset collection definition')
         
@@ -293,7 +293,7 @@ class DatasetCollection:
                     if not interactions.is_satisfied_by(resolved):
                         continue
                 
-                code = self.construct_code(fault_element=cls_label, **resolved)
+                code = self.construct_code(**{task.target:cls_label}, **resolved)
 
                 if code not in self.samples:
                     raise ValueError(f'Combination provided with filters {filters} not in the collection')

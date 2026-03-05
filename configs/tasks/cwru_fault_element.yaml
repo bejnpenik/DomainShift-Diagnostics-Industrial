@@ -1,0 +1,48 @@
+# CWRU bearing fault element classification task
+#
+# Target: fault_element (normal vs inner ring vs outer ring vs ball)
+# Domain factors define what varies across domains — these become
+# the axes of the pairwise experiment grid.
+
+collection: cwru
+target: fault_element
+
+domain_factors:
+  - fault_size
+  - bearing_position
+  - condition
+
+defaults:
+  fixed:
+    fault_size: 0
+    bearing_position: 0
+    condition: 0
+  resolve:
+    sampling_rate: [1, 2]
+    fault_position: 1             # 1 = centered
+
+classes:
+  0:                              # 0 = normal
+    fixed:
+      fault_size: 0
+    resolve:
+      fault_position: 0           # 0 = normal position
+      sampling_rate: 2            # 2 = 48000 Hz
+
+class_interactions:
+  1:                              # 1 = inner ring
+    bearing_position:
+      1:
+        sampling_rate: 1
+  2:                              # 2 = outer ring
+    bearing_position:
+      1:
+        sampling_rate: 1
+  3:                              # 3 = ball
+    bearing_position:
+      1:
+        sampling_rate: 1
+
+filters:
+  exclude:
+    fault_size: [0, 4]

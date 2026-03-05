@@ -3,3 +3,4 @@ from .metadata import Metadata
 from .task import Task, Rule, Interactions, InteractionRule
 from .dataset_plan import DatasetPlan, SampleGroup
 from .collection import DatasetCollection
+from . import task_builder

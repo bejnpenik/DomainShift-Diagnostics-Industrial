@@ -1,4 +1,4 @@
-name: cnn1d_1x1
+name: cnn1d_4x4
 type: 1d
 
 encoder:
@@ -13,9 +13,9 @@ encoder:
 
 aggregator:
   type: adaptive
-  levels: 1
+  levels: 16
 
 head:
-  depth: 1
+  depth: 2
   dropout: 0.1
   act: relu

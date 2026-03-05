@@ -4,11 +4,11 @@ from datetime import datetime
 import dataclasses, pickle
 
 
-from collection.collection import DatasetCollection
-from reader.reader import BaseFileReader
-from experiment.experiment import Experiment
-from study.design import StudyDesign, ExperimentSpec
-from results.containers import MultiDomainSolution, StudySolution, StudySolutionBuilder
+from src.collection.collection import DatasetCollection
+from src.reader.reader import BaseFileReader
+from src.experiment.experiment import Experiment
+from src.study.design import StudyDesign, ExperimentSpec
+from src.results.containers import MultiDomainSolution, StudySolution, StudySolutionBuilder
 
 class Study:
     """
@@ -63,7 +63,7 @@ class Study:
                 print(f"\n{'='*70}")
                 print(f"Experiment {spec_idx + 1}/{total_specs}: {spec.name}")
                 print(f"Task: {spec.task.target}")
-                print(f"Model: {spec.config.model_class.__name__}")
+                print(f"Model: {spec.config.model_config.model_class.__name__}")
                 print(f"Processor: {spec.processor_name}")
                 print(f"Domains: {spec.num_domains}")
                 print(f"Seeds: {design.seeds}")

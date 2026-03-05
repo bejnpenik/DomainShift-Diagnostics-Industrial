@@ -6,8 +6,8 @@ import torch.optim as optim
 from sklearn.metrics import confusion_matrix
 import numpy.typing as npt
 
-from training.early_stopping import EarlyStopper
-from training.config import TrainerConfig, TrainResult
+from .early_stopping import EarlyStopper
+from .config import TrainerConfig, TrainResult
 
 
 
@@ -42,7 +42,7 @@ class Trainer:
                 params, lr=cfg.lr, momentum=cfg.momentum,
                 weight_decay=cfg.weight_decay,
             )
-        raise ValueError(f"Unknown optimizer: {self._optimizer_name}")
+        raise ValueError(f"Unknown optimizer: {cfg.optimizer_name}")
 
     def _inject_noise(self, x: torch.Tensor) -> torch.Tensor:
         cfg = self._config

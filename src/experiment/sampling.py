@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from random import Random
 
-from collection import DatasetPlan, SampleGroup
+from ..collection import DatasetPlan, SampleGroup
 
 
 @dataclass(frozen=True)

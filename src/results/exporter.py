@@ -18,13 +18,13 @@ from typing import Dict, List, Any, Optional, Union, Iterator
 from pathlib import Path
 import numpy as np
 
-from results.containers import (
+from .containers import (
     DomainSolution,
     MultiDomainSolution,
     RepeatedMultiDomainSolution,
     StudySolution
 )
-from results.metrics import MetricsCalculator
+from .metrics import MetricsCalculator
 
 
 # =============================================================================

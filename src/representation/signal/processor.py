@@ -4,10 +4,10 @@ import numpy as np
 import numpy.typing as npt
 import torch
 
-from collection import Metadata
-from representation.signal.config import SignalProcessorConfig, RawViewConfig, STFTViewConfig
-from representation.signal.resampling import Resampler
-from representation.signal.segmentation import SignalSegmenter
+from ...collection.metadata import Metadata
+from .config import SignalProcessorConfig, RawViewConfig, STFTViewConfig
+from .resampling import Resampler
+from .segmentation import SignalSegmenter
 
 
 class SignalProcessor:

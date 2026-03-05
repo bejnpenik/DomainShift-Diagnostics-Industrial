@@ -1,4 +1,4 @@
-name: cnn1d_1x1
+name: cnn1d_multihead
 type: 1d
 
 encoder:
@@ -12,8 +12,8 @@ encoder:
   - [pool, {k: 2, s: 2, p: 1}]
 
 aggregator:
-  type: adaptive
-  levels: 1
+  type: multihead
+  levels: [16,4,1]
 
 head:
   depth: 1

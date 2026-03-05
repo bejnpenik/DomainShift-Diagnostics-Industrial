@@ -1,0 +1,90 @@
+# CWRU bearing fault element classification — full study
+#
+# This YAML drives the entire experiment sweep:
+#   - Which collection and task to use
+#   - Seeds for repetition (statistical significance)
+#   - Grid factors (cartesian product of all combinations)
+#   - Independent factors (fixed for entire study)
+#   - Dependent factors (resolved conditionally from grid values)
+#
+# Total grid: 2 × 3 × 3 × 3 × 2 = 108 configurations
+# Total runs: 108 × 3 seeds = 324 (× domains for pairwise)
+
+name: cwru_study
+collection: cwru
+task: configs/tasks/cwru_fault_element.yaml
+seeds: [11, 32, 52, 64, 97, 105, 139, 222, 345, 1023]
+
+grid:
+  # ---------------------------------------------------------------
+  # Grid factors — cartesian product of all value combinations
+  # ---------------------------------------------------------------
+  factors:
+    model_type: [1d, 2d]
+    model_variant: [1x1, 2x2, 4x4, multihead]
+    sampling_rate: [12000, 48000]
+    normalization: [dataset, sample, none]
+    optimizer_name: [adamw, sgd]
+
+  # ---------------------------------------------------------------
+  # Independent factors — fixed across the entire grid
+  #
+  # Structured values map to Python objects at runtime:
+  #   file_sampling dict  → FileSamplingProtocol(**cfg)
+  #   early_stopping list → EarlyStopping(patience=10, min_delta=0.001)
+  #   noise list          → GaussianNoise(mean=0.1, std=0.1)
+  # ---------------------------------------------------------------
+  independent:
+    file_sampling:
+      max_files_per_code: 3
+    train_val_split_ratio: 0.33
+    max_epochs: 1
+    weight_decay: 0.0001
+    momentum: 0.9
+    early_stopping: [10, 0.001]
+    noise: [0.1, 0.1]
+    device: cuda
+
+  # ---------------------------------------------------------------
+  # Dependent factors — resolved from grid factor values
+  #
+  # Each dependent factor has:
+  #   depends_on: grid factor name(s) to look up
+  #   mapping:    nested dict for multi-factor, flat for single
+  #   default:    fallback when mapping doesn't cover a combination
+  #
+  # YAML path values (ending in .yaml/.yml) are loaded at run time
+  # into config dicts by resolve_grid_point().
+  # ---------------------------------------------------------------
+  dependent:
+    model:
+      depends_on: [model_type, model_variant]
+      mapping:
+        1d:
+          1x1: configs/models/cnn1d_1x1.yaml
+          2x2: configs/models/cnn1d_2x2.yaml
+          4x4: configs/models/cnn1d_4x4.yaml
+          multihead: configs/models/cnn1d_multihead.yaml
+        2d:
+          1x1: configs/models/cnn2d_1x1.yaml
+          2x2: configs/models/cnn2d_2x2.yaml
+          4x4: configs/models/cnn2d_4x4.yaml
+          multihead: configs/models/cnn2d_multihead.yaml
+
+    processor:
+      depends_on: [model_type, sampling_rate]
+      mapping:
+        1d:
+          12000: configs/processors/raw_12k.yaml
+          48000: configs/processors/raw_48k.yaml
+          64000: configs/processors/raw_64k.yaml
+        2d:
+          12000: configs/processors/spec_12k.yaml
+          48000: configs/processors/spec_48k.yaml
+          64000: configs/processors/spec_64k.yaml
+
+    lr:
+      depends_on: optimizer_name
+      mapping:
+        adamw: 0.001
+        sgd: 0.01

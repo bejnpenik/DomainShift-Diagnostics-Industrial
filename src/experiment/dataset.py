@@ -1,12 +1,12 @@
 import torch
 
-from experiment.sampling import FileSampler
-from reader.reader import BaseFileReader
-from collection.collection import DatasetCollection
-from collection.dataset_plan import DatasetPlan
-from normalization.normalization import Normalisator
+from .sampling import FileSampler
+from ..reader.reader import BaseFileReader
+from ..collection.collection import DatasetCollection
+from ..collection.dataset_plan import DatasetPlan
+from ..normalization.normalization import Normalisator
 
-from representation import Processor
+from ..representation import Processor
 
 class DomainDataset:
     def __init__(

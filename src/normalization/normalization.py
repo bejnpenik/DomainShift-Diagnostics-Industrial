@@ -27,7 +27,6 @@ class Normalisator:
         if mode == "none":
             if (mean is not None or std is not None):
                 raise ValueError("No normalization does not use mean/std")
-            self.mode = 'pretrained'
             self.mean = torch.tensor(0.0)
             self.std = torch.tensor(1.0)
             self._fitted = True
@@ -52,6 +51,9 @@ class Normalisator:
             return (x - self.mean) / (self.std + self.eps)
 
         if self.mode == "pretrained":
+            return (x - self.mean) / (self.std + self.eps)
+        
+        if self.mode == "none":
             return (x - self.mean) / (self.std + self.eps)
 
         raise ValueError(f"Unknown normalization mode {self.mode}")

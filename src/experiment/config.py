@@ -3,10 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal, Tuple
 
-from representation import ProcessorConfig
-from training.config import TrainerConfig
-from model.config import ModelConfig
-from experiment.sampling import FileSamplingProtocol
+from ..representation import ProcessorConfig
+from ..training.config import TrainerConfig
+from ..model.config import ModelConfig
+from .sampling import FileSamplingProtocol
 
 
 
