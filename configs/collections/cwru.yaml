@@ -1,3 +1,9 @@
+download:
+  base_url: https://engineering.case.edu/sites/default/files
+  format: individual
+  filename_template: "{file_id}.mat"
+  skip: [101, 102, 103, 104]   # manually created healthy FE bearing files, not available online
+
 code_schema:
   bearing_position: 100000
   condition: 1

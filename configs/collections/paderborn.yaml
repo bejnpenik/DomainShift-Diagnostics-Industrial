@@ -1,3 +1,8 @@
+download:
+  base_url: https://groups.uni-paderborn.de/kat/BearingDataCenter
+  format: rar
+  filename_template: "{subdirectory}.rar"
+
 code_schema:
     condition: 10000000
     fault_arrangement: 100

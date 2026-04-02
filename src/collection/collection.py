@@ -452,7 +452,7 @@ class DatasetCollection:
                 
                 # Try to construct code - if it exists, this class has data
                 
-                code = self.construct_code(fault_element=cls_label, **resolved)
+                code = self.construct_code(**{task.target: cls_label}, **resolved)
                 if code in self.samples and self.samples[code]:
                     has_valid_combination = True
                     break  # Found at least one valid code for this class
