@@ -3,6 +3,16 @@
 # Target: fault_element (normal vs inner ring vs outer ring)
 # Simpler than CWRU — no class interactions needed.
 # "all" keyword resolves to all available codes for that filter.
+#
+# Aliases (from configs/collections/paderborn.yaml header):
+#   condition:            N15, N09, N15L, N15F
+#   fault_element:        NR (normal), IR (inner ring), OR (outer ring)
+#   fault_size:           S0..S5
+#   fault_mode:           NO, AEDM, AENG, ADRILL, FPITT, PDI
+#   fault_combination:    NO, S, R, M
+#   fault_arrangement:    NR (no repetition), RN (random)
+#   fault_characteristic: NO, SP (single point), DS (distributed)
+#   sampling_rate:        64k
 
 collection: paderborn
 target: fault_element
@@ -17,29 +27,29 @@ domain_factors:
 
 defaults:
   fixed:
-    fault_size: 0
-    fault_arrangement: 0
-    condition: 0
-    fault_combination: 0
-    fault_mode: 0
-    fault_characteristic: 0
+    fault_size: S0
+    fault_arrangement: NR
+    condition: N15
+    fault_combination: NO
+    fault_mode: NO
+    fault_characteristic: NO
   resolve:
     sampling_rate: all
 
 classes:
-  0:                              # 0 = normal
+  NR:
     fixed:
-      fault_size: 0
-      fault_arrangement: 0
-      fault_combination: 0
-      fault_mode: 0
-      fault_characteristic: 0
+      fault_size: S0
+      fault_arrangement: NR
+      fault_combination: NO
+      fault_mode: NO
+      fault_characteristic: NO
     resolve:
       sampling_rate: all
 
 filters:
   exclude:
-    fault_size: [0, 4, 5]
-    fault_mode: 0
-    fault_characteristic: 0
-    fault_combination: 0
+    fault_size: [S0, S4, S5]
+    fault_mode: NO
+    fault_characteristic: NO
+    fault_combination: NO

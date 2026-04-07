@@ -67,12 +67,24 @@ class DatasetCollection:
                     not_found.append((item, fname))
         return tuple(not_found)
     
+    def _alias_to_code(self, field: str, alias: str) -> int:
+        for code, desc in self.header[field].items():
+            if isinstance(desc, dict) and desc.get('alias') == alias:
+                return code
+        raise ValueError(f"Alias '{alias}' not found for filter '{field}'.")
+
     def _generate_samples(self):
-        for fname, val in self.files.items():
-            if isinstance(val, int):
-                self._samples[val].append(fname)
-            elif isinstance(val, dict):
-                self._samples[val['code']].append(fname)
+        schema_fields = set(self.schema.keys())
+        for fname, entry in self.files.items():
+            filter_values = {}
+            for field in schema_fields:
+                raw = entry[field]
+                if isinstance(raw, str):
+                    filter_values[field] = self._alias_to_code(field, raw)
+                else:
+                    filter_values[field] = raw
+            code = self.construct_code(**filter_values)
+            self._samples[code].append(fname)
     
     def _validate_task(self, task:Task):
         target = task.target
@@ -206,22 +218,14 @@ class DatasetCollection:
         return code
     
     def code_description(self, code:int)->dict:
-        """
-        Docstring for code_description
-        
-        :param self: Description
-        :param code: Description
-        :type code: Integer with number of digits equal to number of collection design parameters
-                     eg fault_type, fault_position, fault_size, sampling_frequency thence 4 factors
-                     size(code) = log10(code) + 1 = 4 
-        :return: dictonary of field descriptors
-        :rtype: dict
-        """
         description = {}
         for field, multiplier in self.schema.items():
             field_value = int((code // multiplier) % 10)
-            field_descriptor = self.header[field][field_value]
-            description[field] = field_descriptor
+            desc = self.header[field][field_value]
+            if isinstance(desc, dict):
+                description[field] = {k: v for k, v in desc.items() if k != 'alias'}
+            else:
+                description[field] = {'name': desc, 'value': desc}
         return description
 
     def get_filenames_from_code(self, code)->tuple[int,...]:
@@ -329,7 +333,9 @@ class DatasetCollection:
                 metadata[code] = Metadata(self.code_description(code))
 
 
-            sample_groups[self.header[target][cls_label]] = SampleGroup(
+            cls_desc = self.header[target][cls_label]
+            cls_label_str = cls_desc['name'] if isinstance(cls_desc, dict) else cls_desc
+            sample_groups[cls_label_str] = SampleGroup(
                 codes=codes,
                 metadata=metadata
             )
@@ -346,12 +352,14 @@ class DatasetCollection:
     def get_all_filter_values(self, filter:str)->list[str]:
         return list(self.header[filter].keys())
     
-    def get_filter_value_from_description(self, filter:str, description:str)->int:
-        for flt_val, flt_desc in self.header[filter].items():
-            if flt_desc == description:
-                return flt_val
-
-        raise ValueError(f'Filter {filter} description not found in filter keys.')
+    def get_filter_value_from_description(self, filter: str, description) -> int:
+        for code, desc in self.header[filter].items():
+            if isinstance(desc, dict):
+                if desc.get('alias') == description or desc.get('name') == description:
+                    return code
+            elif desc == description:
+                return code
+        raise ValueError(f"Filter '{filter}' value '{description}' not found in header.")
     
     def create_filters_combinations_from_depends(self, depends, **excludes)->tuple[dict]:
         """

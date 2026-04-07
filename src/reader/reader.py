@@ -13,7 +13,7 @@ class CWRUFileReader(BaseFileReader):
     def __call__(self, fname:str, metadata:Metadata)->tuple[np.ndarray, dict]:
 
 
-        bearing = metadata['bearing_position']
+        bearing = metadata['bearing_position']['value']
 
         data = loadmat(fname, appendmat=True)
 

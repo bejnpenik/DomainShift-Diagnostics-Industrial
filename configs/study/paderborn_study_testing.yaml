@@ -44,6 +44,7 @@ grid:
     early_stopping: [10, 0.001]
     noise: [0.1, 0.1]
     device: cuda
+    verbose_level: 100
     sampling_rate: 12000
     normalization: dataset
     optimizer_name: adamw

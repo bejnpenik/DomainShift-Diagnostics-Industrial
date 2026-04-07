@@ -47,7 +47,7 @@ class SignalProcessor:
         Returns:
             (N, 1, L) for raw or (N, 1, F, T) for STFT.
         """
-        sampling_rate = metadata.sampling_rate
+        sampling_rate = metadata.sampling_rate['value']
 
         # Resample if needed
         if sampling_rate != self._config.target_sampling_rate:

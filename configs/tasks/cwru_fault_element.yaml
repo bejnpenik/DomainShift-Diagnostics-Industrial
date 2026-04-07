@@ -3,6 +3,14 @@
 # Target: fault_element (normal vs inner ring vs outer ring vs ball)
 # Domain factors define what varies across domains — these become
 # the axes of the pairwise experiment grid.
+#
+# Aliases (from configs/collections/cwru.yaml header):
+#   bearing_position: FE, DE
+#   condition:        C1 (0HP), C2 (1HP), C3 (2HP), C4 (3HP)
+#   fault_size:       S0, S7, S14, S21, S28
+#   fault_element:    NR (normal), IR (inner ring), OR (outer ring), BA (ball)
+#   fault_position:   NR (normal), CE (centered), OG (orthogonal), OP (opposite)
+#   sampling_rate:    12k, 48k
 
 collection: cwru
 target: fault_element
@@ -14,35 +22,35 @@ domain_factors:
 
 defaults:
   fixed:
-    fault_size: 0
-    bearing_position: 0
-    condition: 0
+    fault_size: S0
+    bearing_position: FE
+    condition: C1
   resolve:
-    sampling_rate: [1, 2]
-    fault_position: 1             # 1 = centered
+    sampling_rate: [12k, 48k]
+    fault_position: CE
 
 classes:
-  0:                              # 0 = normal
+  NR:
     fixed:
-      fault_size: 0
+      fault_size: S0
     resolve:
-      fault_position: 0           # 0 = normal position
-      sampling_rate: 2            # 2 = 48000 Hz
+      fault_position: NR
+      sampling_rate: 48k
 
 class_interactions:
-  1:                              # 1 = inner ring
+  IR:
     bearing_position:
-      1:
-        sampling_rate: 1
-  2:                              # 2 = outer ring
+      FE:
+        sampling_rate: 12k
+  OR:
     bearing_position:
-      1:
-        sampling_rate: 1
-  3:                              # 3 = ball
+      FE:
+        sampling_rate: 12k
+  BA:
     bearing_position:
-      1:
-        sampling_rate: 1
+      FE:
+        sampling_rate: 12k
 
 filters:
   exclude:
-    fault_size: [0, 4]
+    fault_size: [S0, S28]

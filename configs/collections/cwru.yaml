@@ -11,208 +11,1193 @@ code_schema:
   fault_element: 100
   fault_position: 1000
   sampling_rate: 10
+
 dirname: data/cwru
-files:
-  97: 200021
-  98: 200022
-  99: 200023
-  100: 200024
-  101: 100021
-  102: 100022
-  103: 100023
-  104: 100024
-  105: 211211
-  106: 211212
-  107: 211213
-  108: 211214
-  109: 211221
-  110: 211222
-  111: 211223
-  112: 211224
-  118: 211111
-  119: 211112
-  120: 211113
-  121: 211114
-  122: 211121
-  123: 211122
-  124: 211123
-  125: 211124
-  130: 211311
-  131: 211312
-  132: 211313
-  133: 211314
-  135: 211321
-  136: 211322
-  137: 211323
-  138: 211324
-  144: 212311
-  145: 212312
-  146: 212313
-  147: 212314
-  148: 212321
-  149: 212322
-  150: 212323
-  151: 212324
-  156: 213311
-  158: 213312
-  159: 213313
-  160: 213314
-  161: 213321
-  162: 213322
-  163: 213323
-  164: 213324
-  169: 221211
-  170: 221212
-  171: 221213
-  172: 221214
-  174: 221221
-  175: 221222
-  176: 221223
-  177: 221224
-  185: 221111
-  186: 221112
-  187: 221113
-  188: 221114
-  189: 221121
-  190: 221122
-  191: 221123
-  192: 221124
-  197: 221311
-  198: 221312
-  199: 221313
-  200: 221314
-  201: 221321
-  202: 221322
-  203: 221323
-  204: 221324
-  209: 231211
-  210: 231212
-  211: 231213
-  212: 231214
-  213: 231221
-  214: 231222
-  215: 231223
-  217: 231224
-  222: 231111
-  223: 231112
-  224: 231113
-  225: 231114
-  226: 231121
-  227: 231122
-  228: 231123
-  229: 231124
-  234: 231311
-  235: 231312
-  236: 231313
-  237: 231314
-  238: 231321
-  239: 231322
-  240: 231323
-  241: 231324
-  246: 232311
-  247: 232312
-  248: 232313
-  249: 232314
-  250: 232321
-  251: 232322
-  252: 232323
-  253: 232324
-  258: 233311
-  259: 233312
-  260: 233313
-  261: 233314
-  262: 233321
-  263: 233322
-  264: 233323
-  265: 233324
-  270: 131211
-  271: 131212
-  272: 131213
-  273: 131214
-  274: 121211
-  275: 121212
-  276: 121213
-  277: 121214
-  278: 111211
-  279: 111212
-  280: 111213
-  281: 111214
-  282: 111111
-  283: 111112
-  284: 111113
-  285: 111114
-  286: 121111
-  287: 121112
-  288: 121113
-  289: 121114
-  290: 131111
-  291: 131112
-  292: 131113
-  293: 131114
-  294: 111311
-  295: 111312
-  296: 111313
-  297: 111314
-  298: 112311
-  299: 112312
-  300: 112313
-  301: 112314
-  302: 113311
-  305: 113312
-  306: 113313
-  307: 113314
-  309: 122312
-  310: 122311
-  311: 122313
-  312: 122314
-  313: 121311
-  315: 131311
-  316: 132312
-  317: 132313
-  318: 132314
-  3001: 241211
-  3002: 241212
-  3003: 241213
-  3004: 241214
-  3005: 241111
-  3006: 241112
-  3007: 241113
-  3008: 241114
 filetype: mat
+name: cwru
+
 header:
   bearing_position:
-    1: FE
-    2: DE
+    1: {name: fan end,   alias: FE, value: FE}
+    2: {name: drive end, alias: DE, value: DE}
   condition:
-    1:
-      load: 0
-      speed: 1797
-    2:
-      load: 1
-      speed: 1772
-    3:
-      load: 2
-      speed: 1750
-    4:
-      load: 3
-      speed: 1730
+    1: {name: "0HP 1797rpm", alias: C1, value: C1, load: 0, speed: 1797}
+    2: {name: "1HP 1772rpm", alias: C2, value: C2, load: 1, speed: 1772}
+    3: {name: "2HP 1750rpm", alias: C3, value: C3, load: 2, speed: 1750}
+    4: {name: "3HP 1730rpm", alias: C4, value: C4, load: 3, speed: 1730}
   fault_size:
-    0: 0.0
-    1: 0.007
-    2: 0.014
-    3: 0.021
-    4: 0.028
+    0: {name: "0.000 in", alias: S0,  value: 0.000}
+    1: {name: "0.007 in", alias: S7,  value: 0.007}
+    2: {name: "0.014 in", alias: S14, value: 0.014}
+    3: {name: "0.021 in", alias: S21, value: 0.021}
+    4: {name: "0.028 in", alias: S28, value: 0.028}
   fault_element:
-    0: normal
-    1: inner ring
-    2: outer ring
-    3: ball
+    0: {name: normal,     alias: NR, value: normal}
+    1: {name: inner ring, alias: IR, value: inner ring}
+    2: {name: outer ring, alias: OR, value: outer ring}
+    3: {name: ball,       alias: BA, value: ball}
   fault_position:
-    0: normal
-    1: centered
-    2: orthogonal
-    3: opposite
+    0: {name: normal,     alias: NR, value: normal}
+    1: {name: centered,   alias: CE, value: centered}
+    2: {name: orthogonal, alias: OG, value: orthogonal}
+    3: {name: opposite,   alias: OP, value: opposite}
   sampling_rate:
-    1: 12000
-    2: 48000
-name: cwru
+    1: {name: 12000 Hz, alias: 12k, value: 12000}
+    2: {name: 48000 Hz, alias: 48k, value: 48000}
+
+files:
+  97:
+    bearing_position: DE
+    condition: C1
+    fault_size: S0
+    fault_element: NR
+    fault_position: NR
+    sampling_rate: 48k
+  98:
+    bearing_position: DE
+    condition: C2
+    fault_size: S0
+    fault_element: NR
+    fault_position: NR
+    sampling_rate: 48k
+  99:
+    bearing_position: DE
+    condition: C3
+    fault_size: S0
+    fault_element: NR
+    fault_position: NR
+    sampling_rate: 48k
+  100:
+    bearing_position: DE
+    condition: C4
+    fault_size: S0
+    fault_element: NR
+    fault_position: NR
+    sampling_rate: 48k
+  101:
+    bearing_position: FE
+    condition: C1
+    fault_size: S0
+    fault_element: NR
+    fault_position: NR
+    sampling_rate: 48k
+  102:
+    bearing_position: FE
+    condition: C2
+    fault_size: S0
+    fault_element: NR
+    fault_position: NR
+    sampling_rate: 48k
+  103:
+    bearing_position: FE
+    condition: C3
+    fault_size: S0
+    fault_element: NR
+    fault_position: NR
+    sampling_rate: 48k
+  104:
+    bearing_position: FE
+    condition: C4
+    fault_size: S0
+    fault_element: NR
+    fault_position: NR
+    sampling_rate: 48k
+  105:
+    bearing_position: DE
+    condition: C1
+    fault_size: S7
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 12k
+  106:
+    bearing_position: DE
+    condition: C2
+    fault_size: S7
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 12k
+  107:
+    bearing_position: DE
+    condition: C3
+    fault_size: S7
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 12k
+  108:
+    bearing_position: DE
+    condition: C4
+    fault_size: S7
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 12k
+  109:
+    bearing_position: DE
+    condition: C1
+    fault_size: S7
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 48k
+  110:
+    bearing_position: DE
+    condition: C2
+    fault_size: S7
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 48k
+  111:
+    bearing_position: DE
+    condition: C3
+    fault_size: S7
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 48k
+  112:
+    bearing_position: DE
+    condition: C4
+    fault_size: S7
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 48k
+  118:
+    bearing_position: DE
+    condition: C1
+    fault_size: S7
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 12k
+  119:
+    bearing_position: DE
+    condition: C2
+    fault_size: S7
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 12k
+  120:
+    bearing_position: DE
+    condition: C3
+    fault_size: S7
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 12k
+  121:
+    bearing_position: DE
+    condition: C4
+    fault_size: S7
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 12k
+  122:
+    bearing_position: DE
+    condition: C1
+    fault_size: S7
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 48k
+  123:
+    bearing_position: DE
+    condition: C2
+    fault_size: S7
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 48k
+  124:
+    bearing_position: DE
+    condition: C3
+    fault_size: S7
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 48k
+  125:
+    bearing_position: DE
+    condition: C4
+    fault_size: S7
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 48k
+  130:
+    bearing_position: DE
+    condition: C1
+    fault_size: S7
+    fault_element: BA
+    fault_position: CE
+    sampling_rate: 12k
+  131:
+    bearing_position: DE
+    condition: C2
+    fault_size: S7
+    fault_element: BA
+    fault_position: CE
+    sampling_rate: 12k
+  132:
+    bearing_position: DE
+    condition: C3
+    fault_size: S7
+    fault_element: BA
+    fault_position: CE
+    sampling_rate: 12k
+  133:
+    bearing_position: DE
+    condition: C4
+    fault_size: S7
+    fault_element: BA
+    fault_position: CE
+    sampling_rate: 12k
+  135:
+    bearing_position: DE
+    condition: C1
+    fault_size: S7
+    fault_element: BA
+    fault_position: CE
+    sampling_rate: 48k
+  136:
+    bearing_position: DE
+    condition: C2
+    fault_size: S7
+    fault_element: BA
+    fault_position: CE
+    sampling_rate: 48k
+  137:
+    bearing_position: DE
+    condition: C3
+    fault_size: S7
+    fault_element: BA
+    fault_position: CE
+    sampling_rate: 48k
+  138:
+    bearing_position: DE
+    condition: C4
+    fault_size: S7
+    fault_element: BA
+    fault_position: CE
+    sampling_rate: 48k
+  144:
+    bearing_position: DE
+    condition: C1
+    fault_size: S7
+    fault_element: BA
+    fault_position: OG
+    sampling_rate: 12k
+  145:
+    bearing_position: DE
+    condition: C2
+    fault_size: S7
+    fault_element: BA
+    fault_position: OG
+    sampling_rate: 12k
+  146:
+    bearing_position: DE
+    condition: C3
+    fault_size: S7
+    fault_element: BA
+    fault_position: OG
+    sampling_rate: 12k
+  147:
+    bearing_position: DE
+    condition: C4
+    fault_size: S7
+    fault_element: BA
+    fault_position: OG
+    sampling_rate: 12k
+  148:
+    bearing_position: DE
+    condition: C1
+    fault_size: S7
+    fault_element: BA
+    fault_position: OG
+    sampling_rate: 48k
+  149:
+    bearing_position: DE
+    condition: C2
+    fault_size: S7
+    fault_element: BA
+    fault_position: OG
+    sampling_rate: 48k
+  150:
+    bearing_position: DE
+    condition: C3
+    fault_size: S7
+    fault_element: BA
+    fault_position: OG
+    sampling_rate: 48k
+  151:
+    bearing_position: DE
+    condition: C4
+    fault_size: S7
+    fault_element: BA
+    fault_position: OG
+    sampling_rate: 48k
+  156:
+    bearing_position: DE
+    condition: C1
+    fault_size: S7
+    fault_element: BA
+    fault_position: OP
+    sampling_rate: 12k
+  158:
+    bearing_position: DE
+    condition: C2
+    fault_size: S7
+    fault_element: BA
+    fault_position: OP
+    sampling_rate: 12k
+  159:
+    bearing_position: DE
+    condition: C3
+    fault_size: S7
+    fault_element: BA
+    fault_position: OP
+    sampling_rate: 12k
+  160:
+    bearing_position: DE
+    condition: C4
+    fault_size: S7
+    fault_element: BA
+    fault_position: OP
+    sampling_rate: 12k
+  161:
+    bearing_position: DE
+    condition: C1
+    fault_size: S7
+    fault_element: BA
+    fault_position: OP
+    sampling_rate: 48k
+  162:
+    bearing_position: DE
+    condition: C2
+    fault_size: S7
+    fault_element: BA
+    fault_position: OP
+    sampling_rate: 48k
+  163:
+    bearing_position: DE
+    condition: C3
+    fault_size: S7
+    fault_element: BA
+    fault_position: OP
+    sampling_rate: 48k
+  164:
+    bearing_position: DE
+    condition: C4
+    fault_size: S7
+    fault_element: BA
+    fault_position: OP
+    sampling_rate: 48k
+  169:
+    bearing_position: DE
+    condition: C1
+    fault_size: S14
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 12k
+  170:
+    bearing_position: DE
+    condition: C2
+    fault_size: S14
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 12k
+  171:
+    bearing_position: DE
+    condition: C3
+    fault_size: S14
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 12k
+  172:
+    bearing_position: DE
+    condition: C4
+    fault_size: S14
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 12k
+  174:
+    bearing_position: DE
+    condition: C1
+    fault_size: S14
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 48k
+  175:
+    bearing_position: DE
+    condition: C2
+    fault_size: S14
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 48k
+  176:
+    bearing_position: DE
+    condition: C3
+    fault_size: S14
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 48k
+  177:
+    bearing_position: DE
+    condition: C4
+    fault_size: S14
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 48k
+  185:
+    bearing_position: DE
+    condition: C1
+    fault_size: S14
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 12k
+  186:
+    bearing_position: DE
+    condition: C2
+    fault_size: S14
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 12k
+  187:
+    bearing_position: DE
+    condition: C3
+    fault_size: S14
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 12k
+  188:
+    bearing_position: DE
+    condition: C4
+    fault_size: S14
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 12k
+  189:
+    bearing_position: DE
+    condition: C1
+    fault_size: S14
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 48k
+  190:
+    bearing_position: DE
+    condition: C2
+    fault_size: S14
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 48k
+  191:
+    bearing_position: DE
+    condition: C3
+    fault_size: S14
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 48k
+  192:
+    bearing_position: DE
+    condition: C4
+    fault_size: S14
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 48k
+  197:
+    bearing_position: DE
+    condition: C1
+    fault_size: S14
+    fault_element: BA
+    fault_position: CE
+    sampling_rate: 12k
+  198:
+    bearing_position: DE
+    condition: C2
+    fault_size: S14
+    fault_element: BA
+    fault_position: CE
+    sampling_rate: 12k
+  199:
+    bearing_position: DE
+    condition: C3
+    fault_size: S14
+    fault_element: BA
+    fault_position: CE
+    sampling_rate: 12k
+  200:
+    bearing_position: DE
+    condition: C4
+    fault_size: S14
+    fault_element: BA
+    fault_position: CE
+    sampling_rate: 12k
+  201:
+    bearing_position: DE
+    condition: C1
+    fault_size: S14
+    fault_element: BA
+    fault_position: CE
+    sampling_rate: 48k
+  202:
+    bearing_position: DE
+    condition: C2
+    fault_size: S14
+    fault_element: BA
+    fault_position: CE
+    sampling_rate: 48k
+  203:
+    bearing_position: DE
+    condition: C3
+    fault_size: S14
+    fault_element: BA
+    fault_position: CE
+    sampling_rate: 48k
+  204:
+    bearing_position: DE
+    condition: C4
+    fault_size: S14
+    fault_element: BA
+    fault_position: CE
+    sampling_rate: 48k
+  209:
+    bearing_position: DE
+    condition: C1
+    fault_size: S21
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 12k
+  210:
+    bearing_position: DE
+    condition: C2
+    fault_size: S21
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 12k
+  211:
+    bearing_position: DE
+    condition: C3
+    fault_size: S21
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 12k
+  212:
+    bearing_position: DE
+    condition: C4
+    fault_size: S21
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 12k
+  213:
+    bearing_position: DE
+    condition: C1
+    fault_size: S21
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 48k
+  214:
+    bearing_position: DE
+    condition: C2
+    fault_size: S21
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 48k
+  215:
+    bearing_position: DE
+    condition: C3
+    fault_size: S21
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 48k
+  217:
+    bearing_position: DE
+    condition: C4
+    fault_size: S21
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 48k
+  222:
+    bearing_position: DE
+    condition: C1
+    fault_size: S21
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 12k
+  223:
+    bearing_position: DE
+    condition: C2
+    fault_size: S21
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 12k
+  224:
+    bearing_position: DE
+    condition: C3
+    fault_size: S21
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 12k
+  225:
+    bearing_position: DE
+    condition: C4
+    fault_size: S21
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 12k
+  226:
+    bearing_position: DE
+    condition: C1
+    fault_size: S21
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 48k
+  227:
+    bearing_position: DE
+    condition: C2
+    fault_size: S21
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 48k
+  228:
+    bearing_position: DE
+    condition: C3
+    fault_size: S21
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 48k
+  229:
+    bearing_position: DE
+    condition: C4
+    fault_size: S21
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 48k
+  234:
+    bearing_position: DE
+    condition: C1
+    fault_size: S21
+    fault_element: BA
+    fault_position: CE
+    sampling_rate: 12k
+  235:
+    bearing_position: DE
+    condition: C2
+    fault_size: S21
+    fault_element: BA
+    fault_position: CE
+    sampling_rate: 12k
+  236:
+    bearing_position: DE
+    condition: C3
+    fault_size: S21
+    fault_element: BA
+    fault_position: CE
+    sampling_rate: 12k
+  237:
+    bearing_position: DE
+    condition: C4
+    fault_size: S21
+    fault_element: BA
+    fault_position: CE
+    sampling_rate: 12k
+  238:
+    bearing_position: DE
+    condition: C1
+    fault_size: S21
+    fault_element: BA
+    fault_position: CE
+    sampling_rate: 48k
+  239:
+    bearing_position: DE
+    condition: C2
+    fault_size: S21
+    fault_element: BA
+    fault_position: CE
+    sampling_rate: 48k
+  240:
+    bearing_position: DE
+    condition: C3
+    fault_size: S21
+    fault_element: BA
+    fault_position: CE
+    sampling_rate: 48k
+  241:
+    bearing_position: DE
+    condition: C4
+    fault_size: S21
+    fault_element: BA
+    fault_position: CE
+    sampling_rate: 48k
+  246:
+    bearing_position: DE
+    condition: C1
+    fault_size: S21
+    fault_element: BA
+    fault_position: OG
+    sampling_rate: 12k
+  247:
+    bearing_position: DE
+    condition: C2
+    fault_size: S21
+    fault_element: BA
+    fault_position: OG
+    sampling_rate: 12k
+  248:
+    bearing_position: DE
+    condition: C3
+    fault_size: S21
+    fault_element: BA
+    fault_position: OG
+    sampling_rate: 12k
+  249:
+    bearing_position: DE
+    condition: C4
+    fault_size: S21
+    fault_element: BA
+    fault_position: OG
+    sampling_rate: 12k
+  250:
+    bearing_position: DE
+    condition: C1
+    fault_size: S21
+    fault_element: BA
+    fault_position: OG
+    sampling_rate: 48k
+  251:
+    bearing_position: DE
+    condition: C2
+    fault_size: S21
+    fault_element: BA
+    fault_position: OG
+    sampling_rate: 48k
+  252:
+    bearing_position: DE
+    condition: C3
+    fault_size: S21
+    fault_element: BA
+    fault_position: OG
+    sampling_rate: 48k
+  253:
+    bearing_position: DE
+    condition: C4
+    fault_size: S21
+    fault_element: BA
+    fault_position: OG
+    sampling_rate: 48k
+  258:
+    bearing_position: DE
+    condition: C1
+    fault_size: S21
+    fault_element: BA
+    fault_position: OP
+    sampling_rate: 12k
+  259:
+    bearing_position: DE
+    condition: C2
+    fault_size: S21
+    fault_element: BA
+    fault_position: OP
+    sampling_rate: 12k
+  260:
+    bearing_position: DE
+    condition: C3
+    fault_size: S21
+    fault_element: BA
+    fault_position: OP
+    sampling_rate: 12k
+  261:
+    bearing_position: DE
+    condition: C4
+    fault_size: S21
+    fault_element: BA
+    fault_position: OP
+    sampling_rate: 12k
+  262:
+    bearing_position: DE
+    condition: C1
+    fault_size: S21
+    fault_element: BA
+    fault_position: OP
+    sampling_rate: 48k
+  263:
+    bearing_position: DE
+    condition: C2
+    fault_size: S21
+    fault_element: BA
+    fault_position: OP
+    sampling_rate: 48k
+  264:
+    bearing_position: DE
+    condition: C3
+    fault_size: S21
+    fault_element: BA
+    fault_position: OP
+    sampling_rate: 48k
+  265:
+    bearing_position: DE
+    condition: C4
+    fault_size: S21
+    fault_element: BA
+    fault_position: OP
+    sampling_rate: 48k
+  270:
+    bearing_position: FE
+    condition: C1
+    fault_size: S21
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 12k
+  271:
+    bearing_position: FE
+    condition: C2
+    fault_size: S21
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 12k
+  272:
+    bearing_position: FE
+    condition: C3
+    fault_size: S21
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 12k
+  273:
+    bearing_position: FE
+    condition: C4
+    fault_size: S21
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 12k
+  274:
+    bearing_position: FE
+    condition: C1
+    fault_size: S14
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 12k
+  275:
+    bearing_position: FE
+    condition: C2
+    fault_size: S14
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 12k
+  276:
+    bearing_position: FE
+    condition: C3
+    fault_size: S14
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 12k
+  277:
+    bearing_position: FE
+    condition: C4
+    fault_size: S14
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 12k
+  278:
+    bearing_position: FE
+    condition: C1
+    fault_size: S7
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 12k
+  279:
+    bearing_position: FE
+    condition: C2
+    fault_size: S7
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 12k
+  280:
+    bearing_position: FE
+    condition: C3
+    fault_size: S7
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 12k
+  281:
+    bearing_position: FE
+    condition: C4
+    fault_size: S7
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 12k
+  282:
+    bearing_position: FE
+    condition: C1
+    fault_size: S7
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 12k
+  283:
+    bearing_position: FE
+    condition: C2
+    fault_size: S7
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 12k
+  284:
+    bearing_position: FE
+    condition: C3
+    fault_size: S7
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 12k
+  285:
+    bearing_position: FE
+    condition: C4
+    fault_size: S7
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 12k
+  286:
+    bearing_position: FE
+    condition: C1
+    fault_size: S14
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 12k
+  287:
+    bearing_position: FE
+    condition: C2
+    fault_size: S14
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 12k
+  288:
+    bearing_position: FE
+    condition: C3
+    fault_size: S14
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 12k
+  289:
+    bearing_position: FE
+    condition: C4
+    fault_size: S14
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 12k
+  290:
+    bearing_position: FE
+    condition: C1
+    fault_size: S21
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 12k
+  291:
+    bearing_position: FE
+    condition: C2
+    fault_size: S21
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 12k
+  292:
+    bearing_position: FE
+    condition: C3
+    fault_size: S21
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 12k
+  293:
+    bearing_position: FE
+    condition: C4
+    fault_size: S21
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 12k
+  294:
+    bearing_position: FE
+    condition: C1
+    fault_size: S7
+    fault_element: BA
+    fault_position: CE
+    sampling_rate: 12k
+  295:
+    bearing_position: FE
+    condition: C2
+    fault_size: S7
+    fault_element: BA
+    fault_position: CE
+    sampling_rate: 12k
+  296:
+    bearing_position: FE
+    condition: C3
+    fault_size: S7
+    fault_element: BA
+    fault_position: CE
+    sampling_rate: 12k
+  297:
+    bearing_position: FE
+    condition: C4
+    fault_size: S7
+    fault_element: BA
+    fault_position: CE
+    sampling_rate: 12k
+  298:
+    bearing_position: FE
+    condition: C1
+    fault_size: S7
+    fault_element: BA
+    fault_position: OG
+    sampling_rate: 12k
+  299:
+    bearing_position: FE
+    condition: C2
+    fault_size: S7
+    fault_element: BA
+    fault_position: OG
+    sampling_rate: 12k
+  300:
+    bearing_position: FE
+    condition: C3
+    fault_size: S7
+    fault_element: BA
+    fault_position: OG
+    sampling_rate: 12k
+  301:
+    bearing_position: FE
+    condition: C4
+    fault_size: S7
+    fault_element: BA
+    fault_position: OG
+    sampling_rate: 12k
+  302:
+    bearing_position: FE
+    condition: C1
+    fault_size: S7
+    fault_element: BA
+    fault_position: OP
+    sampling_rate: 12k
+  305:
+    bearing_position: FE
+    condition: C2
+    fault_size: S7
+    fault_element: BA
+    fault_position: OP
+    sampling_rate: 12k
+  306:
+    bearing_position: FE
+    condition: C3
+    fault_size: S7
+    fault_element: BA
+    fault_position: OP
+    sampling_rate: 12k
+  307:
+    bearing_position: FE
+    condition: C4
+    fault_size: S7
+    fault_element: BA
+    fault_position: OP
+    sampling_rate: 12k
+  309:
+    bearing_position: FE
+    condition: C2
+    fault_size: S14
+    fault_element: BA
+    fault_position: OG
+    sampling_rate: 12k
+  310:
+    bearing_position: FE
+    condition: C1
+    fault_size: S14
+    fault_element: BA
+    fault_position: OG
+    sampling_rate: 12k
+  311:
+    bearing_position: FE
+    condition: C3
+    fault_size: S14
+    fault_element: BA
+    fault_position: OG
+    sampling_rate: 12k
+  312:
+    bearing_position: FE
+    condition: C4
+    fault_size: S14
+    fault_element: BA
+    fault_position: OG
+    sampling_rate: 12k
+  313:
+    bearing_position: FE
+    condition: C1
+    fault_size: S14
+    fault_element: BA
+    fault_position: CE
+    sampling_rate: 12k
+  315:
+    bearing_position: FE
+    condition: C1
+    fault_size: S21
+    fault_element: BA
+    fault_position: CE
+    sampling_rate: 12k
+  316:
+    bearing_position: FE
+    condition: C2
+    fault_size: S21
+    fault_element: BA
+    fault_position: OG
+    sampling_rate: 12k
+  317:
+    bearing_position: FE
+    condition: C3
+    fault_size: S21
+    fault_element: BA
+    fault_position: OG
+    sampling_rate: 12k
+  318:
+    bearing_position: FE
+    condition: C4
+    fault_size: S21
+    fault_element: BA
+    fault_position: OG
+    sampling_rate: 12k
+  3001:
+    bearing_position: DE
+    condition: C1
+    fault_size: S28
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 12k
+  3002:
+    bearing_position: DE
+    condition: C2
+    fault_size: S28
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 12k
+  3003:
+    bearing_position: DE
+    condition: C3
+    fault_size: S28
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 12k
+  3004:
+    bearing_position: DE
+    condition: C4
+    fault_size: S28
+    fault_element: OR
+    fault_position: CE
+    sampling_rate: 12k
+  3005:
+    bearing_position: DE
+    condition: C1
+    fault_size: S28
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 12k
+  3006:
+    bearing_position: DE
+    condition: C2
+    fault_size: S28
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 12k
+  3007:
+    bearing_position: DE
+    condition: C3
+    fault_size: S28
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 12k
+  3008:
+    bearing_position: DE
+    condition: C4
+    fault_size: S28
+    fault_element: IR
+    fault_position: CE
+    sampling_rate: 12k
