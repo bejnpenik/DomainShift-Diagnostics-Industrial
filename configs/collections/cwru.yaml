@@ -15,6 +15,7 @@ code_schema:
 dirname: data/cwru
 filetype: mat
 name: cwru
+reader: configs/readers/cwru_reader.yaml
 
 header:
   bearing_position:

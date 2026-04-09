@@ -89,7 +89,7 @@ class Experiment:
         
         self._normalisator = None
         
-        X, Y, cls_labels = self._domain_dataset(
+        X, Y, cls_labels, _ = self._domain_dataset(
             dataset_plan, self._normalisator, self._config.random_seed
         )
         
@@ -131,8 +131,8 @@ class Experiment:
         return (X_train, Y_train), (X_val, Y_val), cls_labels, train_norm
     
     def _check_train_test_labels(self, cls_labels: dict, test_cls_labels: dict) -> bool:
-        """Validate that test labels match train labels."""
-        return True
+        """Validate that test label set matches train label set."""
+        return set(cls_labels.keys()) == set(test_cls_labels.keys())
     
     def train_on_plan(self, dataset_plan: DatasetPlan) -> TrainResult:
         """Train a model on a single dataset plan."""
@@ -161,7 +161,7 @@ class Experiment:
         cls_labels: dict
     ):
         """Evaluate a trained model on a dataset plan."""
-        X_test, Y_test, test_cls_labels = self._domain_dataset(
+        X_test, Y_test, test_cls_labels, _ = self._domain_dataset(
             dataset_plan, normalisator, self._config.random_seed
         )
         

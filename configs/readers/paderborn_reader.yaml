@@ -1,0 +1,21 @@
+name: paderborn_reader
+format: mat
+loader: scipy
+simplify_cells: true
+
+channels:
+  vibration:
+    variable_index: 1
+    dtype: float32
+  rpm:
+    variable_index: 4
+    dtype: float32
+  torque:
+    variable_index: 5
+    dtype: float32
+  force:
+    variable_index: 2
+    dtype: float32
+
+file_key:
+  source: filename    # use Path(fname).stem directly

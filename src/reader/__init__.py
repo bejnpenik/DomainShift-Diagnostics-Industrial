@@ -1,2 +1,2 @@
-# reader/__init__.py
-from .reader import BaseFileReader, CWRUFileReader, PaderbornFileReader
+from .reader import BaseFileReader, UniversalFileReader
+from .config import ReaderConfig

@@ -16,6 +16,7 @@ code_schema:
 dirname: data/paderborn
 filetype: mat
 name: paderborn
+reader: configs/readers/paderborn_reader.yaml
 
 header:
   condition:

@@ -10,36 +10,38 @@ import itertools
 
 
 class DatasetCollection:
-    """
-    DatasetCollection class
-    """
+    """Load a collection YAML and provide structured access to files and samples."""
     @staticmethod
     def check_attribute_value(attribute:int, attribute_name:str):
         if (attribute < 0 or attribute > 9):
             raise ValueError(f'{attribute_name} {attribute} must be in range (0,9)')
-    def __init__(self, yaml_path: Path|str):
+    def __init__(self, yaml_path: Path|str, check_files: bool = True):
         self._yaml_path = Path(yaml_path)
         if not self._yaml_path.exists():
-            raise ValueError(f'Collection configuration file {self._yaml_path._str} does not exist!')
-        
+            raise ValueError(f'Collection configuration file {self._yaml_path} does not exist!')
+
         with open(yaml_path, "r") as f:
             self._cfg = yaml.safe_load(f)
-        
-        self._not_found = self._check_file_exists()
-        if self._not_found:
-            not_found_str = ', '.join(map(str, self._not_found))
-            raise ValueError(f'Some of the files not found: {not_found_str}! Please fix yaml config!')
+
+        if check_files:
+            not_found = self._check_file_exists()
+            if not_found:
+                not_found_str = ', '.join(map(str, not_found))
+                raise ValueError(f'Some of the files not found: {not_found_str}! Please fix yaml config!')
+
         self._samples = defaultdict(list)
         self._generate_samples()
 
-    def _check_file_exists(self)->tuple[str, ...]:
-        """
-        Docstring for check_file_exists
-        
-        :param self: Description
-        :return: Description
-        :rtype: tuple[str, ...]
-        """
+        reader_path = self._cfg.get('reader')
+        if reader_path:
+            from ..reader.config import ReaderConfig
+            from ..reader.reader import UniversalFileReader
+            self._reader = UniversalFileReader(ReaderConfig.from_yaml(reader_path))
+        else:
+            self._reader = None
+
+    def _check_file_exists(self) -> tuple[str, ...]:
+        """Return (item, path) pairs for every expected file that is missing."""
         not_found = []
         for item, vals in self.files.items():
             realizations = 1
@@ -126,88 +128,35 @@ class DatasetCollection:
                 raise ValueError(f'Arguments {missing_str} in classes {cls} specific resolving dictionary not present in dataset collection definition')
 
     @property
-    def name(self):
-        """
-        Docstring for name
-        
-        :param self: Description
-        """
+    def name(self) -> str:
         return self._cfg['name']
 
     @property
-    def header(self):
-        """
-        Docstring for header
-        
-        :param self: Description
-        """
+    def header(self) -> dict:
         return self._cfg['header']
 
     @property
-    def files(self):
-        """
-        Docstring for files
-        
-        :param self: Description
-        """
+    def files(self) -> dict:
         return self._cfg['files']
-    
+
     @property
-    def samples(self):
+    def samples(self) -> dict:
         return self._samples
-    
+
     @property
-    def filetype(self):
-        """
-        Docstring for filetype
-        
-        :param self: Description
-        """
+    def filetype(self) -> str:
         return self._cfg['filetype']
-    
+
     @property
-    def dirname(self):
-        """
-        Docstring for dirname
-        
-        :param self: Description
-        """
+    def dirname(self) -> Path:
         return Path(self._cfg['dirname'])
-    
+
     @property
-    def schema(self):
-        """
-        Docstring for schema
-        
-        :param self: Description
-        """
+    def schema(self) -> dict:
         return self._cfg['code_schema']
     
-    @property
-    def dataset_definition(self):
-        """
-        Docstring for dataset_definition
-        
-        :param self: Description
-        """
-        return self._cfg['dataset_definition']
-    
-    @property
-    def file_definition(self):
-        """
-        Docstring for file_definition
-        
-        :param self: Description
-        """
-        return self._cfg['file_definition']
-    
-    def construct_code(self, **filters)->int:
-        """
-        Docstring for construct_code
-        
-        :param self: Description
-        :param filters: Description
-        """
+    def construct_code(self, **filters) -> int:
+        """Compute the composite integer code for a set of filter values."""
         code = 0
 
         for field, multiplier in self.schema.items():
@@ -228,15 +177,11 @@ class DatasetCollection:
                 description[field] = {'name': desc, 'value': desc}
         return description
 
-    def get_filenames_from_code(self, code)->tuple[int,...]:
-        """
-        Docstring for get_filenames_from_code
-        
-        :param self: Description
-        :param code: Description
-        :return: Description
-        :rtype: tuple[int, ...]
-        """
+    @property
+    def reader(self):
+        return self._reader
+
+    def get_filenames_from_code(self, code) -> tuple[str, ...]:
         return tuple(self.samples[code])
     
     def add_realizations_to_the_code(self, code:int, realizations:int)->int:
@@ -361,16 +306,7 @@ class DatasetCollection:
                 return code
         raise ValueError(f"Filter '{filter}' value '{description}' not found in header.")
     
-    def create_filters_combinations_from_depends(self, depends, **excludes)->tuple[dict]:
-        """
-        Docstring for create_filters_combinations_from_depends
-        
-        :param self: Description
-        :param target: Description
-        :param depends: Description
-        :return: Description
-        :rtype: tuple[dict]
-        """
+    def create_filters_combinations_from_depends(self, depends, **excludes) -> tuple[dict, ...]:
 
         if set(depends) - self.header.keys():
             missing = set(depends) - self.header.keys()

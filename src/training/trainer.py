@@ -3,11 +3,21 @@ from __future__ import annotations
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.utils.data
 from sklearn.metrics import confusion_matrix
 import numpy.typing as npt
 
 from .early_stopping import EarlyStopper
 from .config import TrainerConfig, TrainResult
+
+
+class _FullBatchIter:
+    """Wrap a pre-loaded GPU tensor pair as a single-batch iterable."""
+    def __init__(self, x: torch.Tensor, y: torch.Tensor) -> None:
+        self._batch = (x, y)
+
+    def __iter__(self):
+        yield self._batch
 
 
 
@@ -90,12 +100,17 @@ class Trainer:
         model = model.to(cfg.device)
         optimizer = self._create_optimizer(model.parameters())
         criterion = nn.CrossEntropyLoss()
+        stopper = EarlyStopper(*cfg.early_stopping) if cfg.early_stopping else None
 
-        x, y = train_data[0].to(cfg.device), train_data[1].to(cfg.device)
-
-        stopper = None
-        if cfg.early_stopping:
-            stopper = EarlyStopper(cfg.early_stopping[0], cfg.early_stopping[1])
+        if cfg.batch_size is None:
+            x = train_data[0].to(cfg.device)
+            y = train_data[1].to(cfg.device)
+            data_iter = _FullBatchIter(x, y)
+        else:
+            dataset = torch.utils.data.TensorDataset(*train_data)
+            data_iter = torch.utils.data.DataLoader(
+                dataset, batch_size=cfg.batch_size, shuffle=True
+            )
 
         verbosity = -1
         train_loss = train_acc = val_loss = val_acc = 0.0
@@ -103,24 +118,29 @@ class Trainer:
 
         for epoch in range(cfg.max_epochs):
             model.train()
-            optimizer.zero_grad()
+            total_loss = total_correct = total_n = 0
 
-            xt = self._inject_noise(x)
-            out = model(xt)
-            loss = criterion(out, y)
-            loss.backward()
-            optimizer.step()
+            for xb, yb in data_iter:
+                xb = xb.to(cfg.device)
+                yb = yb.to(cfg.device)
+                optimizer.zero_grad()
+                xb = self._inject_noise(xb)
+                out = model(xb)
+                loss = criterion(out, yb)
+                loss.backward()
+                optimizer.step()
+                total_loss += loss.item() * yb.size(0)
+                total_correct += out.max(1)[1].eq(yb).sum().item()
+                total_n += yb.size(0)
 
-            train_loss = loss.item()
-            correct = out.max(1)[1].eq(y).sum().item()
-            train_acc = 100 * correct / y.size(0)
-
+            train_loss = total_loss / total_n
+            train_acc = 100 * total_correct / total_n
             val_loss, val_acc = self._validate(model, val_data, criterion)
             epochs_run = epoch + 1
 
             if cfg.verbose_level > 0 and epoch // cfg.verbose_level > verbosity:
                 print(
-                    f"Epoch {epochs_run:02d} | "
+                    f"Epoch {epochs_run:04d} | "
                     f"train loss {train_loss:.5f} | train acc {train_acc:.2f}% | "
                     f"val loss {val_loss:.5f} | val acc {val_acc:.2f}%"
                 )

@@ -37,6 +37,10 @@ class SignalProcessor:
     def config(self) -> SignalProcessorConfig:
         return self._config
 
+    def segment_raw(self, signal: npt.ArrayLike, sampling_rate: int) -> torch.Tensor:
+        """Segment without resampling or view transform. For aux channels."""
+        return self._segmenter(signal, sampling_rate)
+
     def __call__(self, signal: npt.ArrayLike, metadata: Metadata) -> torch.Tensor:
         """Transform raw signal into model-ready tensor.
 

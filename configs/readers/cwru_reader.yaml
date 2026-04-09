@@ -1,0 +1,22 @@
+name: cwru_reader
+format: mat
+loader: scipy
+simplify_cells: false
+
+channels:
+  vibration:
+    key_template: "X{file_key}_{bearing_position}_time"
+    dtype: float32
+  rpm:
+    source: metadata
+    field: condition.speed    # dot-path: metadata['condition']['speed']
+
+file_key:
+  source: filename
+  min_digits: 3
+  overrides:
+    "101": "097"
+    "102": "098"
+    "103": "099"
+    "104": "100"
+    "174": "173"

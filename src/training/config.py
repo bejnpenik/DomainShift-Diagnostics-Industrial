@@ -16,6 +16,9 @@ class TrainerConfig(BaseModel):
     min_epochs: int = Field(default=100, ge=0)
     noise: Tuple[float, float] | None = (0.1, 0.1)
     verbose_level: int = Field(default=1, ge=0)
+    batch_size: int | None = Field(default=None, gt=0)
+    # None  → full-batch (data moved to GPU once, one gradient step per epoch)
+    # int   → mini-batch via DataLoader (data stays on CPU, shuffled each epoch)
 
 
 @dataclass

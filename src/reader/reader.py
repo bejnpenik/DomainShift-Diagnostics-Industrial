@@ -1,54 +1,70 @@
-import numpy as np
+from __future__ import annotations
 
-from scipy.io import loadmat
+import numpy as np
 from pathlib import Path
-from ..collection import Metadata
+from scipy.io import loadmat
+
+from .config import ReaderConfig
+from ..collection.metadata import Metadata
 
 
 class BaseFileReader:
     pass
 
-class CWRUFileReader(BaseFileReader):
-    
-    def __call__(self, fname:str, metadata:Metadata)->tuple[np.ndarray, dict]:
 
+class UniversalFileReader(BaseFileReader):
+    """Load one or more named channels from a .mat file per ReaderConfig."""
 
-        bearing = metadata['bearing_position']['value']
+    def __init__(self, config: ReaderConfig) -> None:
+        self._cfg = config
 
-        data = loadmat(fname, appendmat=True)
+    def __call__(self, fname: str, metadata: Metadata) -> dict[str, np.ndarray]:
+        cfg = self._cfg
+        file_key = self._resolve_file_key(fname)
+        data = None  # lazy — only load file if at least one file channel exists
 
-        key = Path(fname).name.split('.')[0]
+        result = {}
+        for ch_name, ch_cfg in cfg.channels.items():
+            if ch_cfg.source == "metadata":
+                # Dot-path traversal: "condition.speed" → metadata['condition']['speed']
+                val = metadata
+                for part in ch_cfg.field.split('.'):
+                    val = val[part]
+                result[ch_name] = np.array([val], dtype=ch_cfg.dtype)
+                continue
 
-        if key == '101':
-            key = '97'
-        elif key == '102':
-            key = '98'
-        elif key == '103':
-            key = '99'
-        elif key == '104':
-            key = '100'
+            # File channel — open mat file lazily
+            if data is None:
+                data = loadmat(fname, appendmat=True, simplify_cells=cfg.simplify_cells)
 
-        elif key == '174':
-            key = '173'
+            if ch_cfg.key_template is not None:
+                # CWRU-style: build key from template fields
+                bearing = metadata['bearing_position']['value']  # e.g. 'DE'
+                key = ch_cfg.key_template.format(
+                    file_key=file_key,
+                    bearing_position=bearing,
+                )
+                result[ch_name] = np.asarray(data[key].ravel(), dtype=ch_cfg.dtype)
 
-        if len(key) < 3:
-            key = f'0{key}'
+            elif ch_cfg.variable_index is not None:
+                # Paderborn-style: stem is the top-level key, nested Y[idx]['Data']
+                dict_key = Path(fname).stem
+                result[ch_name] = np.asarray(
+                    data[dict_key]['Y'][ch_cfg.variable_index]['Data'],
+                    dtype=ch_cfg.dtype,
+                )
+            else:
+                raise ValueError(
+                    f"Channel '{ch_name}': must have key_template, variable_index, "
+                    "or source='metadata'"
+                )
 
-        key = f'X{key}_{bearing}_time'
-        
+        return result
 
-        return np.asarray(data[key].ravel(), dtype=np.float32)
-
-class PaderbornFileReader(BaseFileReader):
-    def __call__(self, fname: str, metadata:Metadata|None=None, variable:int=6):
-
-        data_dict = loadmat(fname, simplify_cells=True, appendmat=True)
-        
-        dict_key = Path(fname).name.split('.')[0].split('_')
-
-        dict_key = '_'.join(dict_key)
-
-        x = data_dict[dict_key]['Y'][variable]['Data']
-        
-        return np.asarray(x, dtype=np.float32)
-
+    def _resolve_file_key(self, fname: str) -> str:
+        fk = self._cfg.file_key
+        stem = Path(fname).stem
+        key = fk.overrides.get(stem, stem)
+        if fk.min_digits is not None and key.isdigit():
+            key = key.zfill(fk.min_digits)
+        return key

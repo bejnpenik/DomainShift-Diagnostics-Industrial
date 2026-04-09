@@ -80,32 +80,25 @@ class MultiHeadPool2D(nn.Module):
         return torch.cat([x1, x2, x3], dim=1)
     
 class MLP(nn.Module):
-    def __init__(self, input:int, output:int, channels:int, dropout:float=0.0, act:nn.Module|None=None, base = 8):
+    def __init__(self, input: int, output: int, channels: int, dropout: float = 0.0, act: nn.Module | None = None, base: int = 8):
         super().__init__()
 
-        self._dropout = nn.Dropout(dropout)
+        act = act if act else nn.Identity()
 
-        self._act = act if act else nn.Identity()
+        dims = [input * (output / input) ** (i / channels) for i in range(channels + 1)]
+        dims = [max(base, int(round(d / base)) * base) for d in dims]
+        dims[0] = input
+        dims[-1] = output
 
-        self._dims = [
-            input * (output / input) ** (i / channels)
-            for i in range(channels + 1)
-        ]
-
-        self._dims = [max(base, int(round(d / base)) * base) for d in self._dims]
-        self._dims[0] = input
-        self._dims[-1] = output
-        self.layers = []
+        layers: list[nn.Module] = []
         for i in range(channels):
-            self.layers.append(
-                nn.Linear(self._dims[i], self._dims[i+1])
-            )
+            layers.append(nn.Linear(dims[i], dims[i + 1]))
             if i < channels - 1:
-                self.layers.append(self._act)
-                self.layers.append(self._dropout)
-        self.m = nn.Sequential(*self.layers)
-    
-    def forward(self, x: torch.Tensor)->torch.Tensor:
+                layers.append(act)
+                layers.append(nn.Dropout(dropout))
+        self.m = nn.Sequential(*layers)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.m(x)
     
 

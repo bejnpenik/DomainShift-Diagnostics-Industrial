@@ -8,15 +8,6 @@ from src.study.study import Study
 from src.results.exporter import export_to_csv
 
 
-def _get_reader(collection: DatasetCollection):
-    from src.reader.reader import CWRUFileReader, PaderbornFileReader
-    readers = {'cwru': CWRUFileReader, 'paderborn': PaderbornFileReader}
-    name = collection.name
-    if name not in readers:
-        raise ValueError(f"No reader for collection '{name}'. Known: {list(readers)}")
-    return readers[name]()
-
-
 def main():
     parser = argparse.ArgumentParser(description="Run a domain shift study.")
     parser.add_argument("--collection", required=True, help="Path to collection YAML")
@@ -35,7 +26,12 @@ def main():
         parser.error("--study is required when not using --download")
 
     collection = DatasetCollection(args.collection)
-    reader = _get_reader(collection)
+    reader = collection.reader
+    if reader is None:
+        raise ValueError(
+            f"Collection '{collection.name}' has no reader configured. "
+            "Add a 'reader:' key pointing to a reader YAML."
+        )
     study_design, _, _ = build_study_design_from_yaml(args.study, collection)
     study = Study(collection, reader)
     study_solution = study.run(study_design)
