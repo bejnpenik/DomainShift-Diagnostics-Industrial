@@ -4,7 +4,6 @@ import numpy as np
 import numpy.typing as npt
 import torch
 
-from ...collection.metadata import Metadata
 from .config import SignalProcessorConfig, RawViewConfig, STFTViewConfig
 from .resampling import Resampler
 from .segmentation import SignalSegmenter
@@ -41,24 +40,18 @@ class SignalProcessor:
         """Segment without resampling or view transform. For aux channels."""
         return self._segmenter(signal, sampling_rate)
 
-    def __call__(self, signal: npt.ArrayLike, metadata: Metadata) -> torch.Tensor:
+    def __call__(self, signal: npt.ArrayLike, sampling_rate: int) -> torch.Tensor:
         """Transform raw signal into model-ready tensor.
 
         Args:
             signal: 1D numpy array.
-            metadata: Must contain 'sampling_rate'.
+            sampling_rate: Signal sampling rate in Hz.
 
         Returns:
             (N, 1, L) for raw or (N, 1, F, T) for STFT.
         """
-        sampling_rate = metadata.sampling_rate['value']
-
-        # Resample if needed
         if sampling_rate != self._config.target_sampling_rate:
             signal = self._resampler(signal, sampling_rate, self._config.target_sampling_rate)
 
-        # Segment into windows
         windows = self._segmenter(signal, self._config.target_sampling_rate)
-
-        # Apply view
         return self._view(windows)

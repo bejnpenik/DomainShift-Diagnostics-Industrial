@@ -6,8 +6,10 @@ from .sampling import FileSampler
 from ..reader.reader import BaseFileReader
 from ..collection.collection import DatasetCollection
 from ..collection.dataset_plan import DatasetPlan
+from ..collection.channels import SignalChannelConfig, MetadataChannelConfig
 from ..normalization.normalization import Normalisator
 from ..representation import Processor
+from ..study.pipeline import PipelineConfig, ConditioningSource
 
 
 class DomainDataset:
@@ -17,15 +19,76 @@ class DomainDataset:
         file_sampler: FileSampler | None,
         reader: BaseFileReader,
         sample_processor: Processor,
-        primary_channel: str = "vibration",
-        aux_channel: str | None = None,
+        pipeline: PipelineConfig,
     ):
         self._collection = collection
         self._fsampler = file_sampler if file_sampler else FileSampler()
         self._reader = reader
         self._processor = sample_processor
-        self._primary = primary_channel
-        self._aux = aux_channel
+        self._pipeline = pipeline
+
+        # Resolve and validate primary channel
+        if pipeline.primary not in collection.channels:
+            raise ValueError(f"Pipeline primary '{pipeline.primary}' not in collection channels")
+        self._primary_cfg = collection.channels[pipeline.primary]
+        if not isinstance(self._primary_cfg, SignalChannelConfig):
+            raise ValueError(
+                f"Pipeline primary '{pipeline.primary}' must be a signal channel, not metadata"
+            )
+
+        # Resolve conditioning channels
+        self._conditioning: list[
+            tuple[ConditioningSource, SignalChannelConfig | MetadataChannelConfig]
+        ] = []
+        for src in pipeline.conditioning:
+            if src.channel not in collection.channels:
+                raise ValueError(
+                    f"Conditioning channel '{src.channel}' not in collection channels"
+                )
+            self._conditioning.append((src, collection.channels[src.channel]))
+
+        # Compute which reader channels to load
+        self._reader_channels: set[str] = {self._primary_cfg.reader_channel}
+        for _, ch_cfg in self._conditioning:
+            if isinstance(ch_cfg, SignalChannelConfig):
+                self._reader_channels.add(ch_cfg.reader_channel)
+
+    def _resolve_sampling_rate(self, ch_cfg: SignalChannelConfig, metadata) -> int:
+        sr = ch_cfg.sampling_rate
+        if isinstance(sr, int):
+            return sr
+        if sr == 'dynamic':
+            entry = metadata[ch_cfg.sampling_rate_key]
+            return int(entry['value'] if isinstance(entry, dict) else entry)
+        raise ValueError(f"Unknown sampling_rate spec: {sr}")
+
+    def _resolve_metadata_value(self, path: str, metadata) -> float:
+        val = metadata
+        for part in path.split('.'):
+            val = val[part]
+        if isinstance(val, dict):
+            val = val.get('value', next(iter(val.values())))
+        return float(val)
+
+    def _load_conditioning(
+        self, raw: dict, metadata, n_windows: int
+    ) -> torch.Tensor | None:
+        parts = []
+        for src, ch_cfg in self._conditioning:
+            if isinstance(ch_cfg, MetadataChannelConfig):
+                val = self._resolve_metadata_value(ch_cfg.metadata_path, metadata)
+                parts.append(torch.full((n_windows, 1), val))
+            elif isinstance(ch_cfg, SignalChannelConfig):
+                signal = raw[ch_cfg.reader_channel]
+                sr = self._resolve_sampling_rate(ch_cfg, metadata)
+                seg = self._processor.segment_raw(signal, sr)
+                if src.reduce == 'mean':
+                    parts.append(seg.mean(dim=-1, keepdim=True))
+                elif src.reduce == 'none':
+                    parts.append(seg)
+                else:
+                    raise ValueError(f"Unknown reduce: '{src.reduce}'")
+        return torch.cat(parts, dim=-1) if parts else None
 
     def __call__(
         self,
@@ -40,10 +103,12 @@ class DomainDataset:
         for i, (cls_label, sample_group) in enumerate(plan.sample_groups.items()):
             for code, paths in sample_group.codes.items():
                 meta = sample_group.metadata[code]
-
                 for path in paths:
-                    raw = self._reader(path, metadata=meta)
-                    x = self._processor(raw[self._primary], meta)
+                    raw = self._reader(
+                        path, metadata=meta, channels=self._reader_channels
+                    )
+                    primary_sr = self._resolve_sampling_rate(self._primary_cfg, meta)
+                    x = self._processor(raw[self._primary_cfg.reader_channel], primary_sr)
 
                     if normalisator:
                         x = normalisator(x)
@@ -52,14 +117,13 @@ class DomainDataset:
                     Y.append(i * torch.ones(x.shape[0], dtype=torch.long))
                     cls_labels[cls_label] = i
 
-                    if self._aux and self._aux in raw:
-                        aux_seg = self._processor.segment_raw(
-                            raw[self._aux],
-                            self._processor.config.target_sampling_rate,
-                        )
-                        X_aux.append(aux_seg)
+                    cond = self._load_conditioning(raw, meta, x.shape[0])
+                    if cond is not None:
+                        X_aux.append(cond)
 
-        X_out = torch.cat(X)
-        Y_out = torch.cat(Y)
-        X_aux_out = torch.cat(X_aux) if X_aux else None
-        return X_out, Y_out, cls_labels, X_aux_out
+        return (
+            torch.cat(X),
+            torch.cat(Y),
+            cls_labels,
+            torch.cat(X_aux) if X_aux else None,
+        )

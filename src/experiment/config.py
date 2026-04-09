@@ -7,7 +7,7 @@ from ..representation import ProcessorConfig
 from ..training.config import TrainerConfig
 from ..model.config import ModelConfig
 from .sampling import FileSamplingProtocol
-
+from ..study.pipeline import PipelineConfig
 
 
 @dataclass(frozen=True)
@@ -16,13 +16,14 @@ class ExperimentConfig:
     processor_config: ProcessorConfig
     model_config: ModelConfig
     trainer_config: TrainerConfig = field(default_factory=TrainerConfig)
-    
+
     # Data
     file_sampling: FileSamplingProtocol | None = None
     normalization: Literal["sample", "dataset", "pretrained", "none"] = "none"
     normalization_vals: tuple | None = None
     train_val_split_ratio: float = 0.33
     random_seed: int = 42
+    pipeline: PipelineConfig | None = None
 
     @property
     def processor_name(self) -> str:

@@ -237,6 +237,10 @@ class BuiltModel(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.head(self.aggregator(self.encoder(x)))
 
+    def features(self, x: torch.Tensor) -> torch.Tensor:
+        """Extract features before classification head."""
+        return self.aggregator(self.encoder(x))
+
 ####################################################################
 ######                   PUBLIC METHODS                      #######
 ####################################################################

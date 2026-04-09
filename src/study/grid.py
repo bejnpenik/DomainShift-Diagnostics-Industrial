@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from ..experiment.config import ExperimentConfig
 from .design import ExperimentSpec, StudyDesign
+from .pipeline import PipelineConfig
 from ..collection.task import Task
 
 import itertools
@@ -282,7 +283,12 @@ class StudyGridBuilder:
 
         configs = []
         for params in self.build():
-            # Extract ExperimentConfig fields
+            pipeline_raw = params.get('pipeline')
+            pipeline = (
+                PipelineConfig.from_dict(pipeline_raw)
+                if isinstance(pipeline_raw, dict)
+                else pipeline_raw
+            )
             config = ExperimentConfig(
                 name=params.get('name', 'unnamed'),
                 processor_config=params['processor_config'],
@@ -292,7 +298,8 @@ class StudyGridBuilder:
                 normalization=params.get('normalization', 'none'),
                 normalization_vals=params.get('normalization_vals'),
                 train_val_split_ratio=params.get('train_val_split_ratio', 0.33),
-                random_seed=params.get('random_seed', 42)
+                random_seed=params.get('random_seed', 42),
+                pipeline=pipeline,
             )
             configs.append(config)
 

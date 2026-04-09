@@ -17,6 +17,19 @@ filetype: mat
 name: cwru
 reader: configs/readers/cwru_reader.yaml
 
+channels:
+  vibration:
+    reader_channel: vibration
+    sampling_rate: dynamic
+    sampling_rate_key: sampling_rate
+    unit: g
+    description: "Accelerometer"
+  rpm:
+    source: metadata
+    metadata_path: condition.speed
+    unit: rpm
+    description: "Shaft speed from test condition"
+
 header:
   bearing_position:
     1: {name: fan end,   alias: FE, value: FE}

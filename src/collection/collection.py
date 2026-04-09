@@ -40,6 +40,36 @@ class DatasetCollection:
         else:
             self._reader = None
 
+        from .channels import parse_all_channels
+        raw_channels = self._cfg.get('channels', {})
+        self._channels = parse_all_channels(raw_channels) if raw_channels else {}
+
+        if self._reader and self._channels:
+            reader_ch_names = set(self._reader._cfg.channels.keys())
+            for ch_name, ch_cfg in self._channels.items():
+                if hasattr(ch_cfg, 'reader_channel'):
+                    if ch_cfg.reader_channel not in reader_ch_names:
+                        raise ValueError(
+                            f"Channel '{ch_name}' references reader_channel "
+                            f"'{ch_cfg.reader_channel}' which doesn't exist in reader. "
+                            f"Available: {reader_ch_names}"
+                        )
+
+        if self._samples and self._channels:
+            first_code = next(iter(self._samples.keys()))
+            test_meta = Metadata(self.code_description(first_code))
+            for ch_name, ch_cfg in self._channels.items():
+                if hasattr(ch_cfg, 'metadata_path'):
+                    try:
+                        val = test_meta
+                        for part in ch_cfg.metadata_path.split('.'):
+                            val = val[part]
+                    except (KeyError, TypeError):
+                        raise ValueError(
+                            f"Channel '{ch_name}' metadata_path "
+                            f"'{ch_cfg.metadata_path}' cannot resolve in metadata"
+                        )
+
     def _check_file_exists(self) -> tuple[str, ...]:
         """Return (item, path) pairs for every expected file that is missing."""
         not_found = []
@@ -180,6 +210,10 @@ class DatasetCollection:
     @property
     def reader(self):
         return self._reader
+
+    @property
+    def channels(self) -> dict:
+        return self._channels
 
     def get_filenames_from_code(self, code) -> tuple[str, ...]:
         return tuple(self.samples[code])

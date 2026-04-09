@@ -18,13 +18,27 @@ class UniversalFileReader(BaseFileReader):
     def __init__(self, config: ReaderConfig) -> None:
         self._cfg = config
 
-    def __call__(self, fname: str, metadata: Metadata) -> dict[str, np.ndarray]:
+    def __call__(
+        self,
+        fname: str,
+        metadata: Metadata,
+        channels: set[str] | None = None,
+    ) -> dict[str, np.ndarray]:
+        """Load channels from a file.
+
+        Args:
+            fname: Path to .mat file.
+            metadata: Sample metadata.
+            channels: Set of reader channel names to load. None loads all.
+        """
         cfg = self._cfg
         file_key = self._resolve_file_key(fname)
         data = None  # lazy — only load file if at least one file channel exists
 
         result = {}
         for ch_name, ch_cfg in cfg.channels.items():
+            if channels is not None and ch_name not in channels:
+                continue
             if ch_cfg.source == "metadata":
                 # Dot-path traversal: "condition.speed" → metadata['condition']['speed']
                 val = metadata

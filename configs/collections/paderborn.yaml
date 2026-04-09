@@ -18,6 +18,28 @@ filetype: mat
 name: paderborn
 reader: configs/readers/paderborn_reader.yaml
 
+channels:
+  vibration:
+    reader_channel: vibration
+    sampling_rate: 64000
+    unit: "m/s²"
+    description: "Piezoelectric accelerometer, bearing housing"
+  phase_current:
+    reader_channel: force
+    sampling_rate: 64000
+    unit: A
+    description: "Motor phase current 1"
+  rpm:
+    reader_channel: rpm
+    sampling_rate: 4000
+    unit: rpm
+    description: "Rotational speed encoder"
+  torque:
+    reader_channel: torque
+    sampling_rate: 4000
+    unit: Nm
+    description: "Torque transducer"
+
 header:
   condition:
     1: {name: "N15 1500rpm 0.7Nm 1000N",  alias: N15,   value: N15,  force: 1000, load: 0.7, speed: 1500}

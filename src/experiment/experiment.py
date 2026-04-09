@@ -68,12 +68,13 @@ class Experiment:
         
         # Build the dataset pipeline
         self._file_sampler = FileSampler(config.file_sampling)
-        
+
         self._domain_dataset = DomainDataset(
             collection=collection,
             file_sampler=self._file_sampler,
             reader=reader,
             sample_processor=self._sample_processor,
+            pipeline=config.pipeline,
         )
     
     @property
@@ -86,49 +87,42 @@ class Experiment:
     def _prepare_data_splits(self, dataset_plan: DatasetPlan):
         """Load and split data for a dataset plan."""
         set_seed(self._config.random_seed)
-        
-        self._normalisator = None
-        
-        X, Y, cls_labels, _ = self._domain_dataset(
-            dataset_plan, self._normalisator, self._config.random_seed
+
+        X, Y, cls_labels, X_aux = self._domain_dataset(
+            dataset_plan, None, self._config.random_seed
         )
-        
-        X_train, X_val, Y_train, Y_val = train_test_split(
-            X, Y,
+
+        indices = np.arange(len(X))
+        train_idx, val_idx = train_test_split(
+            indices,
             test_size=self._config.train_val_split_ratio,
-            random_state=self._config.random_seed
+            random_state=self._config.random_seed,
         )
-        
-        # Handle normalization
+        X_train, X_val = X[train_idx], X[val_idx]
+        Y_train, Y_val = Y[train_idx], Y[val_idx]
+        aux_train = X_aux[train_idx] if X_aux is not None else None
+        aux_val   = X_aux[val_idx]   if X_aux is not None else None
+
+        # Handle normalization (primary signal only)
         if self._config.normalization == 'dataset':
             train_norm = Normalisator(mode='dataset')
-            train_norm.fit(X_train)
-            X_train = train_norm(X_train)
-            X_val = train_norm(X_val)
-            
         elif self._config.normalization == 'sample':
             train_norm = Normalisator(mode='sample')
-            train_norm.fit(X_train)
-            X_train = train_norm(X_train)
-            X_val = train_norm(X_val)
-            
         elif self._config.normalization == 'pretrained':
             if self._config.normalization_vals is None:
                 raise ValueError('Pretrained normalization requires mean and std')
             mean, std = self._config.normalization_vals
             train_norm = Normalisator(mode='pretrained', mean=mean, std=std)
-            train_norm.fit(X_train)
-            X_train = train_norm(X_train)
-            X_val = train_norm(X_val)
         elif self._config.normalization == 'none':
             train_norm = Normalisator(mode='none')
-            train_norm.fit(X_train)
-            X_train = train_norm(X_train)
-            X_val = train_norm(X_val)
         else:
             raise ValueError(f'Unknown normalization mode: {self._config.normalization}')
-        
-        return (X_train, Y_train), (X_val, Y_val), cls_labels, train_norm
+
+        train_norm.fit(X_train)
+        X_train = train_norm(X_train)
+        X_val   = train_norm(X_val)
+
+        return (X_train, Y_train, aux_train), (X_val, Y_val, aux_val), cls_labels, train_norm
     
     def _check_train_test_labels(self, cls_labels: dict, test_cls_labels: dict) -> bool:
         """Validate that test label set matches train label set."""
@@ -137,15 +131,13 @@ class Experiment:
     def train_on_plan(self, dataset_plan: DatasetPlan) -> TrainResult:
         """Train a model on a single dataset plan."""
         train_data, val_data, cls_labels, train_norm = self._prepare_data_splits(dataset_plan)
-        
-        # Create model
+
         num_classes = len(cls_labels)
         model = self._config.model_config.create_model(num_classes=num_classes)
-        
-        # Train
+
         trainer = Trainer(self._config.trainer_config)
         train_result = trainer.fit(model, train_data, val_data)
-        
+
         return ExperimentTrainResult(
             train_result=train_result,
             normalisator=train_norm,
@@ -161,17 +153,16 @@ class Experiment:
         cls_labels: dict
     ):
         """Evaluate a trained model on a dataset plan."""
-        X_test, Y_test, test_cls_labels, _ = self._domain_dataset(
+        X_test, Y_test, test_cls_labels, X_aux_test = self._domain_dataset(
             dataset_plan, normalisator, self._config.random_seed
         )
-        
+
         if not self._check_train_test_labels(cls_labels, test_cls_labels):
             raise RuntimeError('Train/Test labels mismatch')
-        
+
         trainer = Trainer(self._config.trainer_config)
-        
-        confusion_mat = trainer.predict(model, X_test, Y_test)
-        
+        confusion_mat = trainer.predict(model, X_test, Y_test, aux=X_aux_test)
+
         return confusion_mat, dataset_plan.label
     
     def run_pairwise(

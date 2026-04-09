@@ -12,9 +12,9 @@ from .config import TrainerConfig, TrainResult
 
 
 class _FullBatchIter:
-    """Wrap a pre-loaded GPU tensor pair as a single-batch iterable."""
-    def __init__(self, x: torch.Tensor, y: torch.Tensor) -> None:
-        self._batch = (x, y)
+    """Wrap pre-loaded GPU tensors as a single-batch iterable."""
+    def __init__(self, x: torch.Tensor, y: torch.Tensor, aux: torch.Tensor | None = None) -> None:
+        self._batch = (x, y, aux) if aux is not None else (x, y)
 
     def __iter__(self):
         yield self._batch
@@ -68,14 +68,16 @@ class Trainer:
         return x_noisy
 
     def _validate(
-        self, model: nn.Module, val_data: tuple[torch.Tensor, torch.Tensor],
+        self, model: nn.Module, val_data: tuple,
         criterion: nn.Module,
     ) -> tuple[float, float]:
         cfg = self._config
         model.eval()
-        x, y = val_data[0].to(cfg.device), val_data[1].to(cfg.device)
+        x = val_data[0].to(cfg.device)
+        y = val_data[1].to(cfg.device)
+        aux = val_data[2].to(cfg.device) if len(val_data) > 2 and val_data[2] is not None else None
         with torch.no_grad():
-            out = model(x)
+            out = model(x) if aux is None else model(x, aux)
             loss = criterion(out, y)
             correct = out.max(1)[1].eq(y).sum().item()
         return loss.item(), 100 * correct / y.size(0)
@@ -83,15 +85,15 @@ class Trainer:
     def fit(
         self,
         model: nn.Module,
-        train_data: tuple[torch.Tensor, torch.Tensor],
-        val_data: tuple[torch.Tensor, torch.Tensor],
+        train_data: tuple,
+        val_data: tuple,
     ) -> TrainResult:
         """Train the model.
 
         Args:
             model: PyTorch model.
-            train_data: (X_train, Y_train) tensors.
-            val_data: (X_val, Y_val) tensors.
+            train_data: (X_train, Y_train) or (X_train, Y_train, aux_train) tensors.
+            val_data: (X_val, Y_val) or (X_val, Y_val, aux_val) tensors.
 
         Returns:
             TrainResult with trained model and final metrics.
@@ -102,12 +104,18 @@ class Trainer:
         criterion = nn.CrossEntropyLoss()
         stopper = EarlyStopper(*cfg.early_stopping) if cfg.early_stopping else None
 
+        aux_train = train_data[2] if len(train_data) > 2 else None
+
         if cfg.batch_size is None:
             x = train_data[0].to(cfg.device)
             y = train_data[1].to(cfg.device)
-            data_iter = _FullBatchIter(x, y)
+            aux = aux_train.to(cfg.device) if aux_train is not None else None
+            data_iter = _FullBatchIter(x, y, aux)
         else:
-            dataset = torch.utils.data.TensorDataset(*train_data)
+            tensors = [train_data[0], train_data[1]]
+            if aux_train is not None:
+                tensors.append(aux_train)
+            dataset = torch.utils.data.TensorDataset(*tensors)
             data_iter = torch.utils.data.DataLoader(
                 dataset, batch_size=cfg.batch_size, shuffle=True
             )
@@ -120,12 +128,13 @@ class Trainer:
             model.train()
             total_loss = total_correct = total_n = 0
 
-            for xb, yb in data_iter:
-                xb = xb.to(cfg.device)
-                yb = yb.to(cfg.device)
+            for batch in data_iter:
+                xb = batch[0].to(cfg.device)
+                yb = batch[1].to(cfg.device)
+                auxb = batch[2].to(cfg.device) if len(batch) > 2 else None
                 optimizer.zero_grad()
                 xb = self._inject_noise(xb)
-                out = model(xb)
+                out = model(xb) if auxb is None else model(xb, auxb)
                 loss = criterion(out, yb)
                 loss.backward()
                 optimizer.step()
@@ -167,6 +176,7 @@ class Trainer:
         model: nn.Module,
         x: torch.Tensor,
         y: torch.Tensor,
+        aux: torch.Tensor | None = None,
     ) -> npt.NDArray:
         """Predict and return confusion matrix.
 
@@ -174,6 +184,7 @@ class Trainer:
             model: Trained model.
             x: Input tensor.
             y: True labels.
+            aux: Optional conditioning tensor.
 
         Returns:
             Confusion matrix as numpy array.
@@ -182,6 +193,9 @@ class Trainer:
         model.to(cfg.device)
         model.eval()
         with torch.no_grad():
-            x, y = x.to(cfg.device), y.to(cfg.device)
-            preds = model(x).max(1)[1]
+            x = x.to(cfg.device)
+            y = y.to(cfg.device)
+            if aux is not None:
+                aux = aux.to(cfg.device)
+            preds = (model(x) if aux is None else model(x, aux)).max(1)[1]
         return confusion_matrix(y.cpu().numpy(), preds.cpu().numpy())

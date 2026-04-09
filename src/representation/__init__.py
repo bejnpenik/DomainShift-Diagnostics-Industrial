@@ -6,15 +6,12 @@ from typing import Protocol
 import numpy.typing as npt
 import torch
 
-from ..collection import Metadata
-
-
 class Processor(Protocol):
     @property
     def name(self) -> str:
         ...
 
-    def __call__(self, data: npt.ArrayLike, metadata: Metadata) -> torch.Tensor:
+    def __call__(self, data: npt.ArrayLike, sampling_rate: int) -> torch.Tensor:
         ...
 
 

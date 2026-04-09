@@ -35,6 +35,8 @@ grid:
   #   noise list          → GaussianNoise(mean=0.1, std=0.1)
   # ---------------------------------------------------------------
   independent:
+    pipeline:
+      primary: vibration
     file_sampling:
       max_files_per_code: 3
     train_val_split_ratio: 0.33
