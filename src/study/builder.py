@@ -382,6 +382,15 @@ def build_study_design(
     from ..collection.task_builder import build_task_and_filters_from_yaml
 
     task, filters = build_task_and_filters_from_yaml(cfg.task_path, collection)
+
+    # TODO: validate pipeline.primary and conditioning channels against
+    # collection.channels here, before building the grid, to catch typos
+    # at study-build time rather than deep inside the experiment loop.
+    # The pipeline is currently a raw dict inside cfg.independent (or
+    # cfg.factors for varying pipelines) and only converted to a
+    # PipelineConfig in grid.py's build_experiment_configs. Either parse
+    # it here or add a _validate_pipeline(cfg, collection) helper.
+
     design = _make_grid_builder(cfg).build_study_design(
         study_name=cfg.name,
         task=task,

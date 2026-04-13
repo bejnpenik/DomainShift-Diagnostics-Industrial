@@ -53,6 +53,19 @@ class DomainDataset:
             if isinstance(ch_cfg, SignalChannelConfig):
                 self._reader_channels.add(ch_cfg.reader_channel)
 
+        # Multi-channel processors (e.g. OrderTrackingProcessor) declare which
+        # reader channels they need. Guard: conditioning + multi-channel is not
+        # supported in V1 because segment_raw() is not defined on those processors.
+        if hasattr(sample_processor, 'required_reader_channels'):
+            if self._conditioning:
+                raise ValueError(
+                    f"Processor '{sample_processor.name}' requires multiple reader "
+                    "channels but conditioning channels alongside multi-channel "
+                    "processors are not supported in V1. Remove pipeline.conditioning "
+                    "from the study YAML when using this processor."
+                )
+            self._reader_channels.update(sample_processor.required_reader_channels)
+
     def _resolve_sampling_rate(self, ch_cfg: SignalChannelConfig, metadata) -> int:
         sr = ch_cfg.sampling_rate
         if isinstance(sr, int):
@@ -67,7 +80,11 @@ class DomainDataset:
         for part in path.split('.'):
             val = val[part]
         if isinstance(val, dict):
-            val = val.get('value', next(iter(val.values())))
+            if 'value' not in val:
+                raise ValueError(
+                    f"Metadata path '{path}' resolved to a dict without a 'value' key: {val}"
+                )
+            val = val['value']
         return float(val)
 
     def _load_conditioning(
@@ -107,8 +124,15 @@ class DomainDataset:
                     raw = self._reader(
                         path, metadata=meta, channels=self._reader_channels
                     )
-                    primary_sr = self._resolve_sampling_rate(self._primary_cfg, meta)
-                    x = self._processor(raw[self._primary_cfg.reader_channel], primary_sr)
+                    if hasattr(self._processor, 'required_reader_channels'):
+                        proc_channels = {
+                            ch: raw[ch]
+                            for ch in self._processor.required_reader_channels
+                        }
+                        x = self._processor.process(proc_channels)
+                    else:
+                        primary_sr = self._resolve_sampling_rate(self._primary_cfg, meta)
+                        x = self._processor(raw[self._primary_cfg.reader_channel], primary_sr)
 
                     if normalisator:
                         x = normalisator(x)

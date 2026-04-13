@@ -1,0 +1,63 @@
+# Paderborn order-tracking study — full grid
+#
+# Uses angular-domain processing instead of time-domain.
+# RPM signal drives angular resampling; vibration is the primary channel.
+# No sampling_rate grid factor — order tracking always processes at 64 kHz.
+#
+# 1D CNNs receive raw angular windows:     (N, 1, 2560)
+# 2D CNNs receive order-spectrum windows:  (N, 1, 256)
+#
+# Grid: 2 × 4 × 3 × 2 = 48 configs × 10 seeds
+
+name: paderborn_order_study
+collection: paderborn
+task: configs/tasks/paderborn_fault_element.yaml
+seeds: [11, 32, 52, 64, 97, 105, 139, 222, 345, 1023]
+
+grid:
+  factors:
+    model_type: [1d, 2d]
+    model_variant: [1x1, 2x2, 4x4, multihead]
+    normalization: [dataset, sample, none]
+    optimizer_name: [adamw, sgd]
+
+  independent:
+    pipeline:
+      primary: vibration
+    file_sampling:
+      max_files_per_code: 3
+    train_val_split_ratio: 0.33
+    max_epochs: 3000
+    weight_decay: 0.0001
+    momentum: 0.9
+    early_stopping: [10, 0.001]
+    noise: [0.1, 0.1]
+    device: cuda
+    verbose_level: 100
+
+  dependent:
+    model:
+      depends_on: [model_type, model_variant]
+      mapping:
+        1d:
+          1x1: configs/models/cnn1d_1x1.yaml
+          2x2: configs/models/cnn1d_2x2.yaml
+          4x4: configs/models/cnn1d_4x4.yaml
+          multihead: configs/models/cnn1d_multihead.yaml
+        2d:
+          1x1: configs/models/cnn2d_1x1.yaml
+          2x2: configs/models/cnn2d_2x2.yaml
+          4x4: configs/models/cnn2d_4x4.yaml
+          multihead: configs/models/cnn2d_multihead.yaml
+
+    processor:
+      depends_on: [model_type]
+      mapping:
+        1d: configs/processors/order_64k.yaml
+        2d: configs/processors/order_spec_64k.yaml
+
+    lr:
+      depends_on: optimizer_name
+      mapping:
+        adamw: 0.001
+        sgd: 0.01

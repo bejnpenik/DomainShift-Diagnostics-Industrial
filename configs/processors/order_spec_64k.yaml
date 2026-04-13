@@ -1,0 +1,19 @@
+type: order_tracking
+name: order_spec_64k
+
+channels:
+  vibration_reader_channel: vibration
+  rpm_reader_channel: rpm
+  vibration_sampling_rate: 64000
+  rpm_sampling_rate: 4000
+
+angular:
+  target_orders: 512
+  window_revolutions: 5.0
+  window_overlap: 0.2
+
+view:
+  type: order_spectrum
+  n_orders: 256
+
+# Output shape: (N, 1, 256)  — N windows × 1 ch × 256 order bins

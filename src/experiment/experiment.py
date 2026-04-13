@@ -58,12 +58,16 @@ class Experiment:
         reader: BaseFileReader,
         config: ExperimentConfig
     ):
+        if config.pipeline is None:
+            raise ValueError(
+                "ExperimentConfig must have a pipeline — "
+                "set pipeline.primary in study YAML under grid.independent"
+            )
+
         self._collection = collection
         self._reader = reader
         self._config = config
-        
-        # Create processor from config
-        #self._sample_processor = config.processor_config.create_processor()
+
         self._sample_processor = create_processor(config.processor_config)
         
         # Build the dataset pipeline

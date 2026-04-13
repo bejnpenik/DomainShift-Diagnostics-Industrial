@@ -59,8 +59,12 @@ def build_processor_config(cfg: dict[str, Any]):
 
     if proc_type == "signal":
         return _build_signal_config(cfg)
+    elif proc_type == "order_tracking":
+        return _build_order_tracking_config(cfg)
     else:
-        raise ValueError(f"Unknown processor type: '{proc_type}'. Expected: signal")
+        raise ValueError(
+            f"Unknown processor type: '{proc_type}'. Expected: signal, order_tracking"
+        )
 
 
 def build_processor_config_from_yaml(path: str | Path):
@@ -142,6 +146,60 @@ def _build_signal_config(cfg: dict[str, Any]):
 
 
 # ---------------------------------------------------------------------------
+# Internal: order tracking processor config builder
+# ---------------------------------------------------------------------------
+
+_ORDER_VIEW_TYPES = {"raw_order", "order_spectrum"}
+
+
+def _build_order_tracking_config(cfg: dict[str, Any]):
+    """Build an OrderTrackingProcessorConfig from a YAML dict.
+
+    YAML sections:
+        channels  -> vibration/rpm reader channel names + sampling rates
+        angular   -> target_orders, window_revolutions, window_overlap
+        view      -> raw_order | order_spectrum (with optional n_orders)
+    """
+    from .order.config import (
+        OrderTrackingProcessorConfig,
+        OrderTrackingViewConfig,
+        OrderSpectrumViewConfig,
+    )
+
+    channels = cfg.get("channels", {})
+    angular = cfg.get("angular", {})
+    view_cfg = cfg.get("view", {})
+    view_type = view_cfg.get("type", "raw_order")
+
+    name = cfg.get("name")
+    if name is None:
+        vib_sr = channels.get("vibration_sampling_rate", "?")
+        name = f"order_{vib_sr}"
+
+    if view_type == "raw_order":
+        view = OrderTrackingViewConfig()
+    elif view_type == "order_spectrum":
+        view = OrderSpectrumViewConfig(n_orders=view_cfg.get("n_orders", 256))
+    else:
+        raise ValueError(
+            f"Unknown order tracking view type: '{view_type}'. "
+            f"Expected one of: {_ORDER_VIEW_TYPES}"
+        )
+
+    return OrderTrackingProcessorConfig(
+        name=name,
+        vibration_reader_channel=channels.get("vibration_reader_channel", "vibration"),
+        rpm_reader_channel=channels.get("rpm_reader_channel", "rpm"),
+        vibration_sampling_rate=channels["vibration_sampling_rate"],
+        rpm_sampling_rate=channels["rpm_sampling_rate"],
+        target_orders=angular.get("target_orders", 512),
+        window_revolutions=angular.get("window_revolutions", 5.0),
+        window_overlap=angular.get("window_overlap", 0.2),
+        view=view,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Validation helper (for study loader)
 # ---------------------------------------------------------------------------
 
@@ -159,14 +217,28 @@ def validate_processor_yaml(path: str | Path) -> dict[str, Any]:
 
     if "type" not in cfg:
         raise ValueError(f"Processor YAML {path} missing 'type' field")
-    if cfg["type"] not in ("signal",):
-        raise ValueError(f"Processor YAML {path} has unknown type: {cfg['type']}")
 
-    view = cfg.get("view", {})
-    view_type = view.get("type", "raw")
-    if view_type not in _VIEW_TYPES:
+    proc_type = cfg["type"]
+    if proc_type == "signal":
+        view = cfg.get("view", {})
+        view_type = view.get("type", "raw")
+        if view_type not in _VIEW_TYPES:
+            raise ValueError(
+                f"Processor YAML {path} has unknown view type: '{view_type}'. "
+                f"Expected one of: {_VIEW_TYPES}"
+            )
+    elif proc_type == "order_tracking":
+        view = cfg.get("view", {})
+        view_type = view.get("type", "raw_order")
+        if view_type not in _ORDER_VIEW_TYPES:
+            raise ValueError(
+                f"Processor YAML {path} has unknown order view type: '{view_type}'. "
+                f"Expected one of: {_ORDER_VIEW_TYPES}"
+            )
+    else:
         raise ValueError(
-            f"Processor YAML {path} has unknown view type: {view_type}"
+            f"Processor YAML {path} has unknown type: '{proc_type}'. "
+            "Expected: signal, order_tracking"
         )
 
     return cfg
