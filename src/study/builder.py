@@ -344,12 +344,15 @@ def _make_grid_builder(cfg: StudyConfig):
             "Use a single dependent field (e.g. lr)."
         )
 
-    # --- strip flat trainer fields; convert file_sampling dict ---
+    # --- strip flat trainer fields; convert file_sampling + adaptation_config dicts ---
     clean_independent = {k: v for k, v in resolved_independent.items()
                          if k not in TrainerConfig.model_fields}
     if isinstance(clean_independent.get('file_sampling'), dict):
         clean_independent = {**clean_independent,
                              'file_sampling': FileSamplingProtocol(**clean_independent['file_sampling'])}
+    # adaptation_config is kept as a raw dict here; grid.py converts it to
+    # AdaptationConfig when building ExperimentConfig objects.
+    # No conversion needed in the builder — just pass it through.
 
     return build_grid_from_dicts(
         study_factors=cfg.factors,

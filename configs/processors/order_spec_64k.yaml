@@ -15,5 +15,8 @@ angular:
 view:
   type: order_spectrum
   n_orders: 256
+  window_function: none   # "hann" reduces leakage for non-integer window_revolutions
 
 # Output shape: (N, 1, 256)  — N windows × 1 ch × 256 order bins
+# This is a 1D representation (not a 2D spectrogram).
+# Compatible with 1D CNN encoders only.

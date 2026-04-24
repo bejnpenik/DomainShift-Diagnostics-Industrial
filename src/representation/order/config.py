@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Discriminator, Field
 
-from .view import OrderTrackingView, OrderSpectrumView
+from .view import OrderTrackingView, OrderSpectrogramView, OrderSpectrumView
 
 
 class OrderTrackingViewConfig(BaseModel):
@@ -15,17 +15,41 @@ class OrderTrackingViewConfig(BaseModel):
         return OrderTrackingView()
 
 
+class OrderSpectrogramViewConfig(BaseModel):
+    """Config for order-spectrogram output: (N, 1, F, T).
+
+    Applies STFT to angular windows, producing a 2D order-vs-revolution image
+    compatible with 2D CNN encoders. F = n_fft//2+1, T depends on window length
+    and hop_length.
+
+    For the default 2560-sample window (512 orders/rev × 5 rev):
+        n_fft=256, hop_length=96  →  F=129, T=27
+    """
+    type: Literal["order_spectrogram"] = "order_spectrogram"
+    n_fft: int = Field(default=256, gt=0)
+    hop_length: int = Field(default=96, gt=0)
+    win_length: int = Field(default=256, gt=0)
+
+    def create_view(self) -> OrderSpectrogramView:
+        return OrderSpectrogramView(
+            n_fft=self.n_fft,
+            hop_length=self.hop_length,
+            win_length=self.win_length,
+        )
+
+
 class OrderSpectrumViewConfig(BaseModel):
     """Config for order-spectrum output: (N, 1, O)."""
     type: Literal["order_spectrum"] = "order_spectrum"
     n_orders: int = Field(default=256, gt=0)
+    window_function: Literal["none", "hann"] = "none"
 
     def create_view(self) -> OrderSpectrumView:
-        return OrderSpectrumView(n_orders=self.n_orders)
+        return OrderSpectrumView(n_orders=self.n_orders, window_function=self.window_function)
 
 
 OrderViewConfig = Annotated[
-    OrderTrackingViewConfig | OrderSpectrumViewConfig,
+    OrderTrackingViewConfig | OrderSpectrogramViewConfig | OrderSpectrumViewConfig,
     Discriminator("type"),
 ]
 

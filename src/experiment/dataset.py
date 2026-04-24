@@ -61,8 +61,10 @@ class DomainDataset:
                 raise ValueError(
                     f"Processor '{sample_processor.name}' requires multiple reader "
                     "channels but conditioning channels alongside multi-channel "
-                    "processors are not supported in V1. Remove pipeline.conditioning "
-                    "from the study YAML when using this processor."
+                    "processors are not supported in V1. "
+                    "Workaround: use a standard signal processor (e.g. raw_12k.yaml) "
+                    "with conditioning, and order tracking without conditioning — "
+                    "both are valid study configurations for comparison."
                 )
             self._reader_channels.update(sample_processor.required_reader_channels)
 

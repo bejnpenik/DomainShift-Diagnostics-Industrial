@@ -289,6 +289,21 @@ class StudyGridBuilder:
                 if isinstance(pipeline_raw, dict)
                 else pipeline_raw
             )
+
+            # adaptation_config: convert raw dict → AdaptationConfig if needed
+            adaptation = params.get('adaptation', 'none') or 'none'
+            adaptation_config_raw = params.get('adaptation_config')
+            adaptation_config = None
+            if adaptation != 'none' and adaptation_config_raw is not None:
+                from ..training.da_trainer import AdaptationConfig
+                if isinstance(adaptation_config_raw, dict):
+                    adaptation_config = AdaptationConfig(**adaptation_config_raw)
+                else:
+                    adaptation_config = adaptation_config_raw
+            elif adaptation != 'none':
+                from ..training.da_trainer import AdaptationConfig
+                adaptation_config = AdaptationConfig()
+
             config = ExperimentConfig(
                 name=params.get('name', 'unnamed'),
                 processor_config=params['processor_config'],
@@ -300,6 +315,8 @@ class StudyGridBuilder:
                 train_val_split_ratio=params.get('train_val_split_ratio', 0.33),
                 random_seed=params.get('random_seed', 42),
                 pipeline=pipeline,
+                adaptation=adaptation,
+                adaptation_config=adaptation_config,
             )
             configs.append(config)
 

@@ -149,7 +149,7 @@ def _build_signal_config(cfg: dict[str, Any]):
 # Internal: order tracking processor config builder
 # ---------------------------------------------------------------------------
 
-_ORDER_VIEW_TYPES = {"raw_order", "order_spectrum"}
+_ORDER_VIEW_TYPES = {"raw_order", "order_spectrum", "order_spectrogram"}
 
 
 def _build_order_tracking_config(cfg: dict[str, Any]):
@@ -158,11 +158,12 @@ def _build_order_tracking_config(cfg: dict[str, Any]):
     YAML sections:
         channels  -> vibration/rpm reader channel names + sampling rates
         angular   -> target_orders, window_revolutions, window_overlap
-        view      -> raw_order | order_spectrum (with optional n_orders)
+        view      -> raw_order | order_spectrum | order_spectrogram
     """
     from .order.config import (
         OrderTrackingProcessorConfig,
         OrderTrackingViewConfig,
+        OrderSpectrogramViewConfig,
         OrderSpectrumViewConfig,
     )
 
@@ -178,6 +179,12 @@ def _build_order_tracking_config(cfg: dict[str, Any]):
 
     if view_type == "raw_order":
         view = OrderTrackingViewConfig()
+    elif view_type == "order_spectrogram":
+        view = OrderSpectrogramViewConfig(
+            n_fft=view_cfg.get("n_fft", 256),
+            hop_length=view_cfg.get("hop_length", 96),
+            win_length=view_cfg.get("win_length", 256),
+        )
     elif view_type == "order_spectrum":
         view = OrderSpectrumViewConfig(n_orders=view_cfg.get("n_orders", 256))
     else:

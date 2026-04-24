@@ -1,0 +1,70 @@
+# Paderborn Domain Adaptation / Generalization study
+#
+# Sweeps over five adaptation strategies alongside standard pairwise evaluation:
+#   none   → standard run_pairwise (baseline, no adaptation)
+#   coral  → CORAL covariance alignment      (DA, source+target at train time)
+#   dann   → Domain-Adversarial NN + GRL     (DA, source+target at train time)
+#   mmd    → Maximum Mean Discrepancy        (DA, source+target at train time)
+#   mixup  → Domain-level Mixup              (DG, source-only, leave-one-out)
+#   irm    → Invariant Risk Minimization     (DG, source-only, leave-one-out)
+#
+# All runs use 1D CNNs on raw time-domain signal to keep computation tractable.
+# Results are stored in identical DomainSolution/MultiDomainSolution containers
+# so the existing CSV exporter and metric calculators work unchanged.
+#
+# Grid: 6 (adaptation) × 3 (normalization) × 2 (optimizer) = 36 configs × 5 seeds
+
+name: paderborn_da_study
+collection: paderborn
+task: configs/tasks/paderborn_fault_element.yaml
+seeds: [11, 32, 52, 64, 97]
+
+grid:
+  factors:
+    adaptation: [none, coral, dann, mmd, mixup, irm]
+    normalization: [dataset, sample, none]
+    optimizer_name: [adamw, sgd]
+
+  independent:
+    model_type: 1d
+    model_variant: 2x2
+    pipeline:
+      primary: vibration
+    file_sampling:
+      max_files_per_code: 3
+    train_val_split_ratio: 0.33
+    max_epochs: 1000
+    weight_decay: 0.0001
+    momentum: 0.9
+    early_stopping: [10, 0.001]
+    noise: [0.1, 0.1]
+    device: cuda
+    verbose_level: 100
+    # adaptation_config applies only when adaptation != none
+    adaptation_config:
+      lambda_coral: 1.0
+      lambda_dann: 1.0
+      lambda_mmd: 1.0
+      alpha_schedule: sigmoid
+      disc_hidden_dim: 256
+      mixup_alpha: 0.2
+      irm_lambda: 1.0
+      batch_size: 64
+
+  dependent:
+    model:
+      depends_on: [model_type, model_variant]
+      mapping:
+        1d:
+          2x2: configs/models/cnn1d_2x2.yaml
+
+    processor:
+      depends_on: [model_type]
+      mapping:
+        1d: configs/processors/raw_64k.yaml
+
+    lr:
+      depends_on: optimizer_name
+      mapping:
+        adamw: 0.001
+        sgd: 0.01

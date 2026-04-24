@@ -19,10 +19,11 @@ import pytest
 import torch
 
 from representation.order.angular_resampler import AngularResampler
-from representation.order.view import OrderTrackingView, OrderSpectrumView
+from representation.order.view import OrderTrackingView, OrderSpectrogramView, OrderSpectrumView
 from representation.order.config import (
     OrderTrackingProcessorConfig,
     OrderTrackingViewConfig,
+    OrderSpectrogramViewConfig,
     OrderSpectrumViewConfig,
 )
 from representation.order.processor import OrderTrackingProcessor
@@ -35,7 +36,12 @@ from representation.signal.view import BaseView
 # =====================================================================
 
 def _make_config(view_type: str = "raw_order", **kwargs) -> OrderTrackingProcessorConfig:
-    view = OrderTrackingViewConfig() if view_type == "raw_order" else OrderSpectrumViewConfig()
+    if view_type == "raw_order":
+        view = OrderTrackingViewConfig()
+    elif view_type == "order_spectrogram":
+        view = OrderSpectrogramViewConfig()
+    else:
+        view = OrderSpectrumViewConfig()
     defaults = dict(
         name="test_ot",
         vibration_sampling_rate=64000,
@@ -170,6 +176,51 @@ class TestOrderTrackingView:
 # TestOrderSpectrumView
 # =====================================================================
 
+class TestOrderSpectrogramView:
+    def test_output_shape(self):
+        """Default params: n_fft=256, hop=96 on 2560-sample window → (N,1,129,27)."""
+        view = OrderSpectrogramView(n_fft=256, hop_length=96, win_length=256)
+        x = torch.randn(4, 2560)
+        out = view(x)
+        assert out.shape == (4, 1, 129, 27)
+
+    def test_output_4d(self):
+        view = OrderSpectrogramView()
+        x = torch.randn(3, 2560)
+        out = view(x)
+        assert out.ndim == 4
+
+    def test_channel_dim_is_1(self):
+        view = OrderSpectrogramView()
+        x = torch.randn(2, 2560)
+        out = view(x)
+        assert out.shape[1] == 1
+
+    def test_output_non_negative(self):
+        view = OrderSpectrogramView()
+        x = torch.randn(2, 2560)
+        out = view(x)
+        assert (out >= 0).all()
+
+    def test_output_dtype_float32(self):
+        view = OrderSpectrogramView()
+        x = torch.randn(2, 2560)
+        out = view(x)
+        assert out.dtype == torch.float32
+
+    def test_is_base_view(self):
+        assert isinstance(OrderSpectrogramView(), BaseView)
+
+    def test_small_window(self):
+        """Should work for small windows — shape determined by STFT math."""
+        view = OrderSpectrogramView(n_fft=16, hop_length=8, win_length=16)
+        x = torch.randn(2, 128)
+        out = view(x)
+        assert out.ndim == 4
+        assert out.shape[1] == 1
+        assert out.shape[2] == 9   # n_fft//2 + 1
+
+
 class TestOrderSpectrumView:
     def test_output_shape(self):
         view = OrderSpectrumView(n_orders=64)
@@ -197,6 +248,17 @@ class TestOrderSpectrumView:
         out = view(x)
         assert out.shape[-1] == 32
 
+    def test_hann_window_same_shape(self):
+        """Hann window should not change output shape."""
+        view = OrderSpectrumView(n_orders=64, window_function="hann")
+        x = torch.randn(8, 256)
+        out = view(x)
+        assert out.shape == (8, 1, 64)
+
+    def test_invalid_window_function_raises(self):
+        with pytest.raises(ValueError, match="window_function"):
+            OrderSpectrumView(n_orders=64, window_function="blackman")
+
 
 # =====================================================================
 # TestOrderTrackingProcessorConfig
@@ -219,6 +281,34 @@ class TestOrderTrackingProcessorConfig:
     def test_target_orders_gt_zero(self):
         with pytest.raises(Exception):
             _make_config(target_orders=0)
+
+    def test_discriminator_order_spectrogram(self):
+        cfg = _make_config("order_spectrogram")
+        assert isinstance(cfg.view, OrderSpectrogramViewConfig)
+
+    def test_order_spectrogram_config_defaults(self):
+        cfg = OrderSpectrogramViewConfig()
+        assert cfg.n_fft == 256
+        assert cfg.hop_length == 96
+        assert cfg.win_length == 256
+
+    def test_order_spectrogram_creates_view(self):
+        cfg = OrderSpectrogramViewConfig(n_fft=64, hop_length=16, win_length=64)
+        view = cfg.create_view()
+        assert isinstance(view, OrderSpectrogramView)
+        assert view._n_fft == 64
+
+    def test_order_spectrum_config_window_function_default(self):
+        cfg = _make_config("order_spectrum")
+        assert cfg.view.window_function == "none"
+
+    def test_order_spectrum_config_hann(self):
+        cfg = OrderTrackingProcessorConfig(
+            name="t", vibration_sampling_rate=64000, rpm_sampling_rate=4000,
+            view=OrderSpectrumViewConfig(n_orders=64, window_function="hann"),
+        )
+        view = cfg.view.create_view()
+        assert view._window_function == "hann"
 
     def test_window_overlap_bounds(self):
         with pytest.raises(Exception):
@@ -293,6 +383,13 @@ class TestBuilderOrderTracking:
         assert isinstance(cfg.view, OrderSpectrumViewConfig)
         assert cfg.view.n_orders == 256
 
+    def test_build_from_yaml_order_spect_64k(self):
+        cfg = build_processor_config_from_yaml("configs/processors/order_spect_64k.yaml")
+        assert isinstance(cfg, OrderTrackingProcessorConfig)
+        assert isinstance(cfg.view, OrderSpectrogramViewConfig)
+        assert cfg.view.n_fft == 256
+        assert cfg.view.hop_length == 96
+
     def test_create_processor_returns_order_tracking_processor(self):
         from representation import create_processor
         cfg = build_processor_config_from_yaml("configs/processors/order_64k.yaml")
@@ -358,6 +455,29 @@ class TestOrderTrackingProcessor:
         vib, rpm = _synthetic_signals(1500.0, duration_s=0.01, vib_sr=64000, rpm_sr=4000)
         with pytest.raises(ValueError):
             proc.process({"vibration": vib, "rpm": rpm})
+
+    def test_process_order_spectrogram_shape(self):
+        """Order spectrogram: 1 sec at 1500 rpm → 5-rev windows → (N,1,F,T)."""
+        proc = _make_processor(
+            "order_spectrogram",
+            target_orders=512,
+            window_revolutions=5.0,
+            window_overlap=0.0,
+            view=OrderSpectrogramViewConfig(n_fft=256, hop_length=96, win_length=256),
+        )
+        vib, rpm = _synthetic_signals(1500.0, 1.0, 64000, 4000)
+        out = proc.process({"vibration": vib, "rpm": rpm})
+        assert out.ndim == 4
+        assert out.shape[1] == 1        # channel dim
+        assert out.shape[2] == 129      # F = 256//2 + 1
+        assert out.shape[3] == 27       # T for 2560-sample window, hop=96
+
+    def test_process_missing_channel_raises_key_error(self):
+        """process() with a missing channel key should raise KeyError."""
+        proc = _make_processor()
+        vib, _ = _synthetic_signals()
+        with pytest.raises(KeyError):
+            proc.process({"vibration": vib})   # rpm missing
 
 
 # =====================================================================

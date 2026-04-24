@@ -4,8 +4,9 @@
 # RPM signal drives angular resampling; vibration is the primary channel.
 # No sampling_rate grid factor — order tracking always processes at 64 kHz.
 #
-# 1D CNNs receive raw angular windows:     (N, 1, 2560)
-# 2D CNNs receive order-spectrum windows:  (N, 1, 256)
+# 1D CNNs receive raw angular windows:         (N, 1, 2560)
+# 2D CNNs receive order spectrograms:          (N, 1, 129, 27)
+#     (512 orders/rev × 5 rev = 2560 samples → STFT n_fft=256, hop=96)
 #
 # Grid: 2 × 4 × 3 × 2 = 48 configs × 10 seeds
 
@@ -54,7 +55,7 @@ grid:
       depends_on: [model_type]
       mapping:
         1d: configs/processors/order_64k.yaml
-        2d: configs/processors/order_spec_64k.yaml
+        2d: configs/processors/order_spect_64k.yaml
 
     lr:
       depends_on: optimizer_name
