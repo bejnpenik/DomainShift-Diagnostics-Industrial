@@ -172,21 +172,25 @@ class TestDANNLoss:
 
 class TestIRMPenalty:
     def test_zero_penalty_same_distribution(self):
+        import torch.nn.functional as F
         from training.losses import irm_penalty
         model = nn.Linear(8, 3)
         logits = [model(torch.randn(16, 8)) for _ in range(3)]
         labels = [torch.randint(0, 3, (16,)) for _ in range(3)]
-        penalty = irm_penalty(logits, labels)
+        losses = [F.cross_entropy(lg, lb) for lg, lb in zip(logits, labels)]
+        penalty = irm_penalty(losses, logits)
         assert penalty.item() >= 0
 
     def test_gradient_flows_through_penalty(self):
+        import torch.nn.functional as F
         from training.losses import irm_penalty
         params = list(nn.Linear(8, 3).parameters())
         logits = [sum(p.sum() for p in params) * torch.ones(16, 3) for _ in range(2)]
         for lg in logits:
             lg.retain_grad()
         labels = [torch.randint(0, 3, (16,)) for _ in range(2)]
-        penalty = irm_penalty(logits, labels)
+        losses = [F.cross_entropy(lg, lb) for lg, lb in zip(logits, labels)]
+        penalty = irm_penalty(losses, logits)
         # Just verify it's computable without error; graph may be complex
         assert penalty.item() >= 0
 
@@ -429,6 +433,107 @@ def _make_dispatch_target(adaptation: str):
             raise ValueError(f"Unknown adaptation: {m!r}")
 
     return _MockExp(adaptation)
+
+
+# =====================================================================
+# TestMultiDomainSolutionStructure
+# =====================================================================
+
+class TestMultiDomainSolutionStructure:
+    """Integration test: DA trainer → DomainSolution → MultiDomainSolution."""
+
+    def _make_solution(self, method: str, n_domains: int = 2):
+        """Train one model per domain with DA and wrap into MultiDomainSolution."""
+        import sys, os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+
+        from training.da_trainer import DomainAdaptiveTrainer
+        from training.trainer import Trainer
+
+        n_classes = 3
+        n_src = 48
+
+        try:
+            from results.containers import DomainSolution, MultiDomainSolution
+        except ImportError:
+            import importlib
+            sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+            from results.containers import DomainSolution, MultiDomainSolution
+
+        domain_solutions = []
+        for i in range(n_domains):
+            rng = torch.Generator().manual_seed(i)
+            X_src = torch.randn(n_src, 1, 16, generator=rng)
+            Y_src = torch.randint(0, n_classes, (n_src,), generator=rng)
+            X_tgt = torch.randn(32, 1, 16, generator=rng) + 1.0
+
+            X_tr, X_val = X_src[:36], X_src[36:]
+            Y_tr, Y_val = Y_src[:36], Y_src[36:]
+
+            model = _TinyModel(in_dim=16, n_classes=n_classes)
+            tc = _trainer_cfg(max_epochs=3)
+            ac = _adap_cfg(batch_size=16)
+            trainer = DomainAdaptiveTrainer(tc, ac, method)
+            result = trainer.fit(model, (X_tr, Y_tr), (X_val, Y_val), X_tgt)
+
+            predictor = Trainer(_trainer_cfg())
+            train_cm = predictor.predict(result.model, X_tr, Y_tr)
+            val_cm = predictor.predict(result.model, X_val, Y_val)
+
+            label = f"domain_{i}"
+            domain_solutions.append(DomainSolution(
+                train_dataset_name=label,
+                class_labels={j: f"cls_{j}" for j in range(n_classes)},
+                seed=42,
+                train_metadata={"train_epoch_nbr": result.epochs_run},
+                confusion_matrices={
+                    label: train_cm,
+                    f"domain_{1 - i}": val_cm,
+                },
+            ))
+
+        return MultiDomainSolution(
+            config_name="test_da_config",
+            domain_solutions=domain_solutions,
+            processor_name="raw",
+        )
+
+    def test_coral_structure(self):
+        mds = self._make_solution("coral")
+        assert len(mds.domain_solutions) == 2
+        for ds in mds.domain_solutions:
+            assert ds.train_dataset_name in ds.confusion_matrices
+            cm = ds.confusion_matrices[ds.train_dataset_name]
+            assert cm.shape == (3, 3)
+
+    def test_mmd_structure(self):
+        mds = self._make_solution("mmd")
+        assert len(mds.domain_solutions) == 2
+        for ds in mds.domain_solutions:
+            assert ds.train_dataset_name in ds.confusion_matrices
+
+    def test_config_name_preserved(self):
+        mds = self._make_solution("coral")
+        assert mds.config_name == "test_da_config"
+        assert mds.processor_name == "raw"
+
+    def test_domain_solution_post_init_requires_self_eval(self):
+        """DomainSolution raises if train_dataset_name not in confusion_matrices."""
+        try:
+            from results.containers import DomainSolution
+        except ImportError:
+            import sys, os
+            sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+            from results.containers import DomainSolution
+        import numpy as np
+        with pytest.raises(ValueError, match="self-evaluation"):
+            DomainSolution(
+                train_dataset_name="A",
+                class_labels={0: "x"},
+                seed=0,
+                train_metadata={},
+                confusion_matrices={"B": np.zeros((1, 1))},
+            )
 
 
 class TestExperimentDispatch:

@@ -18,9 +18,8 @@ seeds: [11, 32, 52, 64, 97, 105, 139, 222, 345, 1023]
 grid:
   factors:
     model_type: [1d, 2d]
-    model_variant: [1x1, 2x2, 4x4, multihead]
+    model_variant: [1x1, 4x4, multihead]
     normalization: [dataset, sample, none]
-    optimizer_name: [adamw, sgd]
 
   independent:
     pipeline:
@@ -35,6 +34,8 @@ grid:
     noise: [0.1, 0.1]
     device: cuda
     verbose_level: 100
+    optimizer_name: adamw
+    lr: 0.001
 
   dependent:
     model:
@@ -42,12 +43,10 @@ grid:
       mapping:
         1d:
           1x1: configs/models/cnn1d_1x1.yaml
-          2x2: configs/models/cnn1d_2x2.yaml
           4x4: configs/models/cnn1d_4x4.yaml
           multihead: configs/models/cnn1d_multihead.yaml
         2d:
           1x1: configs/models/cnn2d_1x1.yaml
-          2x2: configs/models/cnn2d_2x2.yaml
           4x4: configs/models/cnn2d_4x4.yaml
           multihead: configs/models/cnn2d_multihead.yaml
 
@@ -56,9 +55,3 @@ grid:
       mapping:
         1d: configs/processors/order_64k.yaml
         2d: configs/processors/order_spect_64k.yaml
-
-    lr:
-      depends_on: optimizer_name
-      mapping:
-        adamw: 0.001
-        sgd: 0.01

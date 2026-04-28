@@ -93,8 +93,8 @@ def dann_loss(
 
 
 def irm_penalty(
+    losses_per_domain: list[torch.Tensor],
     logits_per_domain: list[torch.Tensor],
-    labels_per_domain: list[torch.Tensor],
 ) -> torch.Tensor:
     """IRM v1 invariance penalty.
 
@@ -102,19 +102,22 @@ def irm_penalty(
     across source domains.  Uses the IRM v1 formulation: for each domain,
     compute ||∇_w CE(w·logits, y)||² at w=1, then sum over domains.
 
+    By the chain rule, ∇_w CE(w·logits, y)|_{w=1} = (∇_logits CE) · logits,
+    so the per-domain CE losses are reused rather than recomputed with a dummy w.
+    create_graph=True is required so the outer loss.backward() can differentiate
+    through this gradient back to model parameters (IRM v1 is second-order by design).
+    retain_graph defaults to True when create_graph=True, so the CE graphs survive
+    for the erm_loss path in the caller.
+
     Args:
+        losses_per_domain: Per-domain CE loss scalars (already computed for ERM).
         logits_per_domain: List of (N_k, C) logit tensors, one per source domain.
-        labels_per_domain: List of (N_k,) label tensors, one per source domain.
 
     Returns:
-        Scalar penalty tensor (differentiable w.r.t. logits).
+        Scalar penalty tensor (differentiable w.r.t. model parameters via logits).
     """
-    device = logits_per_domain[0].device
-    penalty = torch.zeros(1, device=device)
-    for logits, labels in zip(logits_per_domain, labels_per_domain):
-        # Dummy scalar weight — gradient of loss w.r.t. w at w=1
-        w = torch.ones(1, requires_grad=True, device=device)
-        loss = F.cross_entropy(logits * w, labels)
-        grad = torch.autograd.grad(loss, w, create_graph=True)[0]
-        penalty = penalty + grad.pow(2).sum()
+    penalty = logits_per_domain[0].new_zeros(1)
+    for loss, logits in zip(losses_per_domain, logits_per_domain):
+        grad_logits = torch.autograd.grad(loss, logits, create_graph=True)[0]
+        penalty = penalty + (grad_logits * logits).sum().pow(2)
     return penalty

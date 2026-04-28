@@ -19,6 +19,7 @@ class TrainerConfig(BaseModel):
     batch_size: int | None = Field(default=None, gt=0)
     # None  → full-batch (data moved to GPU once, one gradient step per epoch)
     # int   → mini-batch via DataLoader (data stays on CPU, shuffled each epoch)
+    random_seed: int = 42
 
 
 @dataclass

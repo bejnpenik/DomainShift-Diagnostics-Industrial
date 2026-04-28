@@ -40,13 +40,17 @@ grid:
     noise: [0.1, 0.1]
     device: cuda
     verbose_level: 100
-    # adaptation_config applies only when adaptation != none
+    # adaptation_config applies only when adaptation != none.
+    # Fields not used by the selected method are harmless — they are parsed
+    # into AdaptationConfig but never read (e.g. lambda_dann is ignored for
+    # coral/mmd, mixup_alpha is ignored for irm, etc.).
     adaptation_config:
       lambda_coral: 1.0
       lambda_dann: 1.0
       lambda_mmd: 1.0
       alpha_schedule: sigmoid
       disc_hidden_dim: 256
+      disc_lr: 0.0003
       mixup_alpha: 0.2
       irm_lambda: 1.0
       batch_size: 64

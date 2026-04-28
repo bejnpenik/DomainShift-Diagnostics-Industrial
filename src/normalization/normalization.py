@@ -33,7 +33,9 @@ class Normalisator:
 
     def fit(self, x: torch.Tensor):
         if self.mode != "dataset":
-            return self
+            raise RuntimeError(
+                f"fit() is only valid for mode='dataset', not mode='{self.mode}'"
+            )
         if self._fitted:
             raise RuntimeError("Normaliser already fitted, cannot refit")
         self.std, self.mean = torch.std_mean(x, dim=0, keepdim=True)

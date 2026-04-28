@@ -1,7 +1,7 @@
 """
 Tests for training package.
 
-Covers: TrainerConfig, TrainResult, Trainer, EarlyStopper, IllStopper
+Covers: TrainerConfig, TrainResult, Trainer, EarlyStopper
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ import torch.nn as nn
 
 from training.config import TrainerConfig, TrainResult
 from training.trainer import Trainer
-from training.early_stopping import EarlyStopper, IllStopper
+from training.early_stopping import EarlyStopper
 
 
 # =====================================================================
@@ -162,35 +162,6 @@ class TestEarlyStopper:
             model.weight.fill_(999.0)
         # Saved state should be unchanged
         torch.testing.assert_close(stopper.best_state()["weight"], saved_weight)
-
-
-# =====================================================================
-# IllStopper
-# =====================================================================
-
-class TestIllStopper:
-    def test_no_stop_when_improving(self):
-        stopper = IllStopper(patience=3)
-        model = nn.Linear(10, 2)
-        assert not stopper.step(1.0, model)
-        assert not stopper.step(0.9, model)
-        assert not stopper.step(0.8, model)
-
-    def test_stop_after_patience(self):
-        stopper = IllStopper(patience=3)
-        model = nn.Linear(10, 2)
-        assert not stopper.step(0.5, model)  # best
-        assert not stopper.step(0.6, model)  # count=1
-        assert not stopper.step(0.7, model)  # count=2
-        assert not stopper.step(0.8, model)  # count=3
-        assert stopper.step(0.9, model)      # count=4 > patience
-
-    def test_saves_best_state(self):
-        stopper = IllStopper(patience=2)
-        model = nn.Linear(10, 2)
-        stopper.step(1.0, model)
-        stopper.step(0.5, model)
-        assert stopper.best_state() is not None
 
 
 # =====================================================================
@@ -373,3 +344,25 @@ class TestTrainer:
         trainer.fit(model, train_data, val_data)
         captured = capsys.readouterr()
         assert captured.out == ""
+
+    def test_noise_injection_is_reproducible(self):
+        """Two Trainer runs with the same random_seed and noise config must produce
+        identical per-epoch training losses (noise is not drawn from the global RNG)."""
+        cfg = TrainerConfig(
+            max_epochs=3,
+            device="cpu",
+            early_stopping=None,
+            noise=(0.5, 0.1),
+            verbose_level=0,
+            batch_size=16,
+            random_seed=123,
+        )
+        train_data = _make_data(50, 600, 3)
+        val_data   = _make_data(20, 600, 3)
+
+        def _run() -> float:
+            torch.manual_seed(cfg.random_seed)
+            model = nn.Sequential(nn.Flatten(), nn.Linear(600, 3))
+            return Trainer(cfg).fit(model, train_data, val_data).train_loss
+
+        assert _run() == _run()

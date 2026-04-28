@@ -107,18 +107,17 @@ class Task:
             raise ValueError(f'Factors {duplicates_str} both in default fixed and resolves.')
         for cls_label, cls_rule in self.classes.items():
             if self.target in cls_rule.fixed.keys():
-                raise ValueError()
+                raise ValueError(
+                    f"Target '{self.target}' appears in fixed fields of class '{cls_label}'"
+                )
             if self.target in cls_rule.resolve.keys():
-                raise
+                raise ValueError(
+                    f"Target '{self.target}' appears in resolve fields of class '{cls_label}'"
+                )
             if cls_rule.fixed.keys() & cls_rule.resolve.keys():
                 duplicates = cls_rule.fixed.keys() & cls_rule.resolve.keys()
                 duplicates_str = ', '.join(map(str, duplicates))
                 raise ValueError(f'Factors {duplicates_str} both in fixed and resolves for class {cls_label}.')
-    @property
-    def label(self)->str:
-        return ''
-    
-
     def label(self, **filters)->str:
         label_str = f'{self.target}-'
         for field, value in filters.items():

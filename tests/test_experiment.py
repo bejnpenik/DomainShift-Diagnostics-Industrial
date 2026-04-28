@@ -254,11 +254,11 @@ class TestNormalisator:
         with pytest.raises(ValueError):
             Normalisator(mode="sample", mean=torch.tensor(0.0))
 
-    def test_sample_fit_is_noop(self):
+    def test_sample_fit_raises(self):
         norm = Normalisator(mode="sample")
         x = torch.randn(10, 1, 600)
-        result = norm.fit(x)
-        assert result is norm
+        with pytest.raises(RuntimeError, match="fit\\(\\) is only valid for mode='dataset'"):
+            norm.fit(x)
 
     def test_sample_normalizes_per_sample(self):
         norm = Normalisator(mode="sample")
@@ -325,11 +325,11 @@ class TestNormalisator:
         with pytest.raises(ValueError):
             Normalisator(mode="none", std=torch.tensor(1.0))
 
-    def test_none_mode_fit_is_noop(self):
+    def test_none_mode_fit_raises(self):
         norm = Normalisator(mode="none")
         x = torch.randn(10, 1, 600)
-        result = norm.fit(x)
-        assert result is norm
+        with pytest.raises(RuntimeError, match="fit\\(\\) is only valid for mode='dataset'"):
+            norm.fit(x)
 
     def test_none_mode_internally_pretrained(self):
         """None mode should set self.mode to 'pretrained' internally."""

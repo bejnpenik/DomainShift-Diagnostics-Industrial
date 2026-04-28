@@ -386,6 +386,14 @@ def build_study_design(
 
     task, filters = build_task_and_filters_from_yaml(cfg.task_path, collection)
 
+    filters = collection.validate_filters(task, filters)
+    if filters is None:
+        raise ValueError(
+            f"No valid filter combinations produced a complete dataset plan for "
+            f"study '{cfg.name}'. Check task path '{cfg.task_path}' and your "
+            "collection metadata."
+        )
+
     # TODO: validate pipeline.primary and conditioning channels against
     # collection.channels here, before building the grid, to catch typos
     # at study-build time rather than deep inside the experiment loop.

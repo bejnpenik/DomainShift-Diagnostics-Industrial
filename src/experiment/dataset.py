@@ -119,7 +119,7 @@ class DomainDataset:
         plan = self._fsampler(dataset_plan, seed)
         cls_labels = {}
 
-        for i, (cls_label, sample_group) in enumerate(plan.sample_groups.items()):
+        for i, (cls_label, sample_group) in enumerate(sorted(plan.sample_groups.items())):
             for code, paths in sample_group.codes.items():
                 meta = sample_group.metadata[code]
                 for path in paths:

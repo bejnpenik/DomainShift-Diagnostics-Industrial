@@ -35,6 +35,13 @@ from .da_trainer import AdaptationConfig
 from .losses import irm_penalty
 
 
+def _cycling_loader(loader):
+    """Yield batches indefinitely, creating a fresh DataLoader iterator (and
+    therefore a fresh shuffle) each time the loader is exhausted."""
+    while True:
+        yield from iter(loader)
+
+
 class DomainGeneralizationTrainer(Trainer):
     """Train a model on multiple source domains without access to the target.
 
@@ -100,6 +107,10 @@ class DomainGeneralizationTrainer(Trainer):
             for (X, Y) in source_datasets
         ]
 
+        # Number of steps per epoch driven by the longest domain loader;
+        # shorter loaders are cycled so all data is used every epoch.
+        n_steps = max(len(ld) for ld in loaders)
+
         verbosity = -1
         train_loss = train_acc = val_loss = val_acc = 0.0
         epochs_run = 0
@@ -108,23 +119,18 @@ class DomainGeneralizationTrainer(Trainer):
             model.train()
             total_loss = total_correct = total_n = 0
 
-            iters = [iter(ld) for ld in loaders]
-            n_domains = len(iters)
+            iters = [_cycling_loader(ld) for ld in loaders]
 
-            while True:
-                # Draw a batch from every domain; stop when any domain is exhausted
-                try:
-                    batches = [next(it) for it in iters]
-                except StopIteration:
-                    break
+            for step in range(n_steps):
+                batches = [next(it) for it in iters]
 
                 if self._method == "mixup":
                     loss, correct, n = self._mixup_step(
-                        model, batches, criterion, cfg.device, adap.mixup_alpha
+                        model, batches, criterion, cfg.device, adap.mixup_alpha, epoch, step
                     )
                 else:  # irm
                     loss, correct, n = self._irm_step(
-                        model, batches, criterion, cfg.device, adap.irm_lambda
+                        model, batches, criterion, cfg.device, adap.irm_lambda, epoch, step
                     )
 
                 optimizer.zero_grad()
@@ -178,31 +184,32 @@ class DomainGeneralizationTrainer(Trainer):
         criterion: nn.Module,
         device: str,
         alpha: float,
+        epoch: int = 0,
+        step: int = 0,
     ):
         """One Mixup step: mix samples from two randomly chosen source domains."""
         n_domains = len(batches)
         i, j = random.sample(range(n_domains), 2)
 
-        xa = self._inject_noise(batches[i][0].to(device))
+        xa = self._inject_noise(batches[i][0].to(device), epoch, step * 2)
         ya = batches[i][1].to(device)
-        xb = self._inject_noise(batches[j][0].to(device))
+        xb = self._inject_noise(batches[j][0].to(device), epoch, step * 2 + 1)
         yb = batches[j][1].to(device)
 
         lam = float(np.random.beta(alpha, alpha))
-        n = min(xa.shape[0], xb.shape[0])
 
-        x_mix = lam * xa[:n] + (1.0 - lam) * xb[:n]
+        x_mix = lam * xa + (1.0 - lam) * xb
         logits = model(x_mix)
 
         # Soft label loss: λ·CE(logits, y_a) + (1-λ)·CE(logits, y_b)
-        loss = lam * criterion(logits, ya[:n]) + (1.0 - lam) * criterion(logits, yb[:n])
+        loss = lam * criterion(logits, ya) + (1.0 - lam) * criterion(logits, yb)
         preds = logits.max(1)[1]
-        # Accuracy counts a correct prediction if it matches either mixed label
+        # Weighted soft accuracy: approximate, mirrors the soft label loss weighting
         correct = (
-            lam * preds.eq(ya[:n]).sum().item()
-            + (1.0 - lam) * preds.eq(yb[:n]).sum().item()
+            lam * preds.eq(ya).sum().item()
+            + (1.0 - lam) * preds.eq(yb).sum().item()
         )
-        return loss, correct, n
+        return loss, correct, xa.shape[0]
 
     def _irm_step(
         self,
@@ -211,14 +218,16 @@ class DomainGeneralizationTrainer(Trainer):
         criterion: nn.Module,
         device: str,
         irm_lambda: float,
+        epoch: int = 0,
+        step: int = 0,
     ):
         """One IRM step: per-domain ERM + invariance penalty."""
         per_domain_logits = []
         per_domain_labels = []
         per_domain_losses = []
 
-        for batch in batches:
-            xb = self._inject_noise(batch[0].to(device))
+        for domain_idx, batch in enumerate(batches):
+            xb = self._inject_noise(batch[0].to(device), epoch, step * len(batches) + domain_idx)
             yb = batch[1].to(device)
             logits = model(xb)
             domain_loss = criterion(logits, yb)
@@ -227,7 +236,7 @@ class DomainGeneralizationTrainer(Trainer):
             per_domain_losses.append(domain_loss)
 
         erm_loss = torch.stack(per_domain_losses).mean()
-        penalty = irm_penalty(per_domain_logits, per_domain_labels)
+        penalty = irm_penalty(per_domain_losses, per_domain_logits)
         loss = erm_loss + irm_lambda * penalty
 
         # Accuracy on combined batch

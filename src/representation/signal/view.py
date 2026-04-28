@@ -41,7 +41,7 @@ class STFTSignalView(BaseView):
             n_fft=self.n_fft,
             hop_length=self.hop_length,
             win_length=self.win_length,
-            window=self.window,
+            window=self.window.to(x.device),
             return_complex=True,
         )
         x = torch.abs(x)

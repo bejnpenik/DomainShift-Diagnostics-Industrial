@@ -54,15 +54,17 @@ class Trainer:
             )
         raise ValueError(f"Unknown optimizer: {cfg.optimizer_name}")
 
-    def _inject_noise(self, x: torch.Tensor) -> torch.Tensor:
+    def _inject_noise(self, x: torch.Tensor, epoch: int = 0, step: int = 0) -> torch.Tensor:
         cfg = self._config
         if cfg.noise is None:
             return x
         prob, std = cfg.noise
         if prob <= 0:
             return x
-        mask = torch.rand(x.shape[0], device=x.device) < prob
-        noise = torch.randn_like(x) * std
+        seed = cfg.random_seed ^ (epoch * 100_003 + step)
+        gen = torch.Generator(device=x.device).manual_seed(seed & 0xFFFF_FFFF)
+        mask = torch.rand(x.shape[0], generator=gen, device=x.device) < prob
+        noise = torch.randn(x.shape, generator=gen, device=x.device) * std
         x_noisy = x.clone()
         x_noisy[mask] = x[mask] + noise[mask]
         return x_noisy
@@ -128,12 +130,12 @@ class Trainer:
             model.train()
             total_loss = total_correct = total_n = 0
 
-            for batch in data_iter:
+            for step, batch in enumerate(data_iter):
                 xb = batch[0].to(cfg.device)
                 yb = batch[1].to(cfg.device)
                 auxb = batch[2].to(cfg.device) if len(batch) > 2 else None
                 optimizer.zero_grad()
-                xb = self._inject_noise(xb)
+                xb = self._inject_noise(xb, epoch, step)
                 out = model(xb) if auxb is None else model(xb, auxb)
                 loss = criterion(out, yb)
                 loss.backward()

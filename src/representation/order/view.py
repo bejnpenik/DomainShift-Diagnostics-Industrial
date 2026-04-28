@@ -42,12 +42,11 @@ class OrderSpectrogramView(BaseView):
         self._n_fft = n_fft
         self._hop_length = hop_length
         self._win_length = win_length
-        self._window = torch.hann_window(win_length)
 
     def __call__(self, x: npt.ArrayLike) -> torch.Tensor:
         if not isinstance(x, torch.Tensor):
             x = torch.as_tensor(x, dtype=torch.float32)
-        win = self._window.to(x.device)
+        win = torch.hann_window(self._win_length, device=x.device)
         spec = torch.stft(
             x,
             n_fft=self._n_fft,

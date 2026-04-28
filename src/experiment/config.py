@@ -35,7 +35,28 @@ class ExperimentConfig:
     # 'coral','dann','mmd' → DomainAdaptiveTrainer + run_pairwise_with_adaptation
     # 'mixup','irm' → DomainGeneralizationTrainer + run_leave_one_out_dg
     adaptation: str = "none"
-    adaptation_config: object = None  # AdaptationConfig | None
+    adaptation_config: 'AdaptationConfig | None' = None
+
+    def __post_init__(self) -> None:
+        if not (0.0 < self.train_val_split_ratio < 1.0):
+            raise ValueError(
+                f"train_val_split_ratio must be in (0, 1), got {self.train_val_split_ratio}"
+            )
+        if self.adaptation not in _DA_METHODS:
+            raise ValueError(
+                f"Unknown adaptation method '{self.adaptation}'. "
+                f"Expected one of: {sorted(_DA_METHODS)}"
+            )
+        if self.adaptation != "none" and self.trainer_config.batch_size is not None:
+            raise ValueError(
+                f"trainer_config.batch_size is ignored when adaptation='{self.adaptation}'. "
+                "Set batch_size in adaptation_config instead and leave "
+                "trainer_config.batch_size as None."
+            )
+        if self.adaptation != "none" and self.adaptation_config is None:
+            raise ValueError(
+                f"adaptation='{self.adaptation}' requires adaptation_config to be set."
+            )
 
     @property
     def processor_name(self) -> str:

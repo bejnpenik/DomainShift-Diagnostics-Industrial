@@ -20,7 +20,6 @@ from representation.signal.config import (
     SignalProcessorConfig,
 )
 from representation.signal.processor import SignalProcessor
-from collection import Metadata
 
 
 # =====================================================================
@@ -279,9 +278,6 @@ class TestSignalProcessorConfig:
 # =====================================================================
 
 class TestSignalProcessor:
-    def _meta(self, sr: int = 12000) -> Metadata:
-        return Metadata({"sampling_rate": sr})
-
     def test_raw_pipeline_shape(self):
         cfg = SignalProcessorConfig(
             name="raw_12k",
@@ -292,7 +288,7 @@ class TestSignalProcessor:
         )
         pipe = SignalProcessor(cfg)
         signal = np.random.randn(12000).astype(np.float32)
-        result = pipe(signal, self._meta(12000))
+        result = pipe(signal, 12000)
         assert result.ndim == 3
         assert result.shape[1] == 1
         assert result.shape[2] == 600  # 0.05 * 12000
@@ -307,7 +303,7 @@ class TestSignalProcessor:
         )
         pipe = SignalProcessor(cfg)
         signal = np.random.randn(12000).astype(np.float32)
-        result = pipe(signal, self._meta(12000))
+        result = pipe(signal, 12000)
         assert result.ndim == 4
         assert result.shape[1] == 1
 
@@ -321,7 +317,7 @@ class TestSignalProcessor:
         )
         pipe = SignalProcessor(cfg)
         signal = np.random.randn(48000).astype(np.float32)
-        result = pipe(signal, self._meta(48000))
+        result = pipe(signal, 48000)
         assert result.shape[2] == 600  # resampled to 12k, 0.05*12000
 
     def test_no_resampling_when_same_rate(self):
@@ -332,7 +328,7 @@ class TestSignalProcessor:
         )
         pipe = SignalProcessor(cfg)
         signal = np.random.randn(12000).astype(np.float32)
-        result = pipe(signal, self._meta(12000))
+        result = pipe(signal, 12000)
         # Should work without error — resampler not called
         assert result.ndim == 3
 
@@ -348,7 +344,7 @@ class TestSignalProcessor:
 
     def test_different_configs_different_outputs(self):
         signal = np.random.randn(12000).astype(np.float32)
-        meta = self._meta(12000)
+        sr = 12000
 
         raw_pipe = SignalProcessor(SignalProcessorConfig(
             name="raw", view=RawViewConfig(),
@@ -359,8 +355,8 @@ class TestSignalProcessor:
             window_duration=0.05, window_overlap=0.5,
         ))
 
-        raw_result = raw_pipe(signal, meta)
-        stft_result = stft_pipe(signal, meta)
+        raw_result = raw_pipe(signal, sr)
+        stft_result = stft_pipe(signal, sr)
 
         assert raw_result.ndim == 3
         assert stft_result.ndim == 4

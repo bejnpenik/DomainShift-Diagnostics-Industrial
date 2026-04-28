@@ -22,10 +22,10 @@ class SignalSegmenter:
         :return: Description
         :rtype: ArrayLike
         """
-        x = torch.from_numpy(np.asarray(x, dtype=np.float32))
-        
+        x = torch.from_numpy(np.asarray(x, dtype=np.float32)).reshape(-1)
+
         window_samples = int(self._window_duration * sampling_rate)
         overlap_samples = int(window_samples * self._overlap)
         step = window_samples - overlap_samples
-        
+
         return x.unfold(0, window_samples, step)

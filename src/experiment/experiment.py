@@ -92,6 +92,17 @@ class Experiment:
             return self._sample_processor.name
         return ""
     
+    def _make_normalizer(self) -> Normalisator:
+        """Create a fresh Normalisator from experiment config."""
+        if self._config.normalization == 'pretrained':
+            if self._config.normalization_vals is None:
+                raise ValueError('Pretrained normalization requires mean and std')
+            mean, std = self._config.normalization_vals
+            return Normalisator(mode='pretrained', mean=mean, std=std)
+        if self._config.normalization not in ('dataset', 'sample', 'none'):
+            raise ValueError(f'Unknown normalization mode: {self._config.normalization}')
+        return Normalisator(mode=self._config.normalization)
+
     def _prepare_data_splits(self, dataset_plan: DatasetPlan):
         """Load and split data for a dataset plan."""
         set_seed(self._config.random_seed)
@@ -111,22 +122,9 @@ class Experiment:
         aux_train = X_aux[train_idx] if X_aux is not None else None
         aux_val   = X_aux[val_idx]   if X_aux is not None else None
 
-        # Handle normalization (primary signal only)
-        if self._config.normalization == 'dataset':
-            train_norm = Normalisator(mode='dataset')
-        elif self._config.normalization == 'sample':
-            train_norm = Normalisator(mode='sample')
-        elif self._config.normalization == 'pretrained':
-            if self._config.normalization_vals is None:
-                raise ValueError('Pretrained normalization requires mean and std')
-            mean, std = self._config.normalization_vals
-            train_norm = Normalisator(mode='pretrained', mean=mean, std=std)
-        elif self._config.normalization == 'none':
-            train_norm = Normalisator(mode='none')
-        else:
-            raise ValueError(f'Unknown normalization mode: {self._config.normalization}')
-
-        train_norm.fit(X_train)
+        train_norm = self._make_normalizer()
+        if self._config.normalization == "dataset":
+            train_norm.fit(X_train)
         X_train = train_norm(X_train)
         X_val   = train_norm(X_val)
 
@@ -237,16 +235,20 @@ class Experiment:
     # Domain adaptation helpers
     # ------------------------------------------------------------------
 
-    def _load_target_features(
-        self,
-        dataset_plan: DatasetPlan,
-        normalisator: Normalisator,
-    ) -> torch.Tensor:
-        """Load target domain features (unlabeled) normalized with source norm."""
+    def _load_target_features(self, dataset_plan: DatasetPlan) -> torch.Tensor:
+        """Load unlabeled target features normalized with target-domain statistics.
+
+        Each target domain is normalized independently so that 'dataset' mode uses
+        target statistics rather than source statistics.  For 'sample', 'none', and
+        'pretrained' modes the result is identical to passing the source normalizer.
+        """
         X_tgt, _, _, _ = self._domain_dataset(
-            dataset_plan, normalisator, self._config.random_seed
+            dataset_plan, None, self._config.random_seed
         )
-        return X_tgt
+        tgt_norm = self._make_normalizer()
+        if self._config.normalization == "dataset":
+            tgt_norm.fit(X_tgt)
+        return tgt_norm(X_tgt)
 
     # ------------------------------------------------------------------
     # Domain Adaptation: pairwise with distribution alignment
@@ -291,7 +293,7 @@ class Experiment:
                 if j == i:
                     continue
                 tgt_plan = self._collection.construct_dataset_plan(task, **tgt_filters)
-                tgt_xs.append(self._load_target_features(tgt_plan, train_norm))
+                tgt_xs.append(self._load_target_features(tgt_plan))
             target_x = torch.cat(tgt_xs, dim=0)
 
             # Build model and train with adaptation
@@ -345,41 +347,51 @@ class Experiment:
     ):
         """Load and split data from multiple source domains.
 
+        Loads raw (unnormalized) data from each domain, splits train/val,
+        then fits a single joint normalizer on the combined raw training data.
+        This avoids double normalization that would occur if _prepare_data_splits
+        (which normalizes internally) were called and then re-normalized here.
+
         Returns:
             source_train_datasets: list of (X_train, Y_train) per source domain
             val_data:              (X_val, Y_val) concatenated from all sources
             cls_labels:            from first source domain (all must match)
-            train_norm:            normalizer fitted on combined source X_train
+            train_norm:            normalizer fitted on combined raw source X_train
         """
-        all_X_train, all_Y_train, all_X_val, all_Y_val = [], [], [], []
+        all_X_train_raw, all_Y_train, all_X_val_raw, all_Y_val = [], [], [], []
         cls_labels_ref = None
 
         for filters in source_filter_combinations:
             plan = self._collection.construct_dataset_plan(task, **filters)
-            train_data, val_data, cls_labels, _ = self._prepare_data_splits(plan)
+            set_seed(self._config.random_seed)
+            X, Y, cls_labels, _ = self._domain_dataset(
+                plan, None, self._config.random_seed
+            )
             if cls_labels_ref is None:
                 cls_labels_ref = cls_labels
-            all_X_train.append(train_data[0])
-            all_Y_train.append(train_data[1])
-            all_X_val.append(val_data[0])
-            all_Y_val.append(val_data[1])
 
-        # Fit a joint normalizer on combined source training data
-        X_all_train = torch.cat(all_X_train, dim=0)
-        from ..normalization import Normalisator
-        train_norm = Normalisator(mode=self._config.normalization)
-        if self._config.normalization == "pretrained" and self._config.normalization_vals:
-            mean, std = self._config.normalization_vals
-            train_norm = Normalisator(mode="pretrained", mean=mean, std=std)
-        train_norm.fit(X_all_train)
+            indices = np.arange(len(X))
+            train_idx, val_idx = train_test_split(
+                indices,
+                test_size=self._config.train_val_split_ratio,
+                random_state=self._config.random_seed,
+            )
+            all_X_train_raw.append(X[train_idx])
+            all_Y_train.append(Y[train_idx])
+            all_X_val_raw.append(X[val_idx])
+            all_Y_val.append(Y[val_idx])
 
-        # Re-normalize each domain's data with the joint normalizer
+        # Fit one joint normalizer on combined raw training data
+        train_norm = self._make_normalizer()
+        if self._config.normalization == "dataset":
+            train_norm.fit(torch.cat(all_X_train_raw, dim=0))
+
         source_train_datasets = [
             (train_norm(X), Y)
-            for X, Y in zip(all_X_train, all_Y_train)
+            for X, Y in zip(all_X_train_raw, all_Y_train)
         ]
         val_data_combined = (
-            train_norm(torch.cat(all_X_val, dim=0)),
+            train_norm(torch.cat(all_X_val_raw, dim=0)),
             torch.cat(all_Y_val, dim=0),
         )
         return source_train_datasets, val_data_combined, cls_labels_ref, train_norm

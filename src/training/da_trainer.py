@@ -60,6 +60,7 @@ class AdaptationConfig(BaseModel):
     # DANN-specific
     alpha_schedule: Literal["sigmoid", "linear", "constant"] = "sigmoid"
     disc_hidden_dim: int = Field(default=256, gt=0)
+    disc_lr: float = Field(default=3e-4, gt=0)
 
     # DG-specific
     mixup_alpha: float = Field(default=0.2, gt=0.0)
@@ -134,12 +135,19 @@ class DomainAdaptiveTrainer(Trainer):
         criterion = nn.CrossEntropyLoss()
         stopper = EarlyStopper(*cfg.early_stopping) if cfg.early_stopping else None
 
-        # DANN: discriminator + GRL created lazily on first batch (feature dim unknown)
+        # GRL is created eagerly (no feat_dim needed); discriminator is lazy (feat_dim unknown)
+        if self._method == "dann":
+            try:
+                from ..model.domain_modules import GradientReversalLayer, DomainDiscriminator
+            except ImportError:
+                from model.domain_modules import GradientReversalLayer, DomainDiscriminator
+            grl: GradientReversalLayer | None = GradientReversalLayer()
+        else:
+            grl = None
         discriminator = None
         disc_optimizer = None
-        grl = None
 
-        # Build source DataLoader
+        # Build source DataLoader (drop_last=False to use all samples)
         src_tensors = [source_train[0], source_train[1]]
         if len(source_train) > 2 and source_train[2] is not None:
             src_tensors.append(source_train[2])
@@ -147,10 +155,10 @@ class DomainAdaptiveTrainer(Trainer):
             torch.utils.data.TensorDataset(*src_tensors),
             batch_size=batch_size,
             shuffle=True,
-            drop_last=True,
+            drop_last=False,
         )
 
-        # Build target DataLoader (features only)
+        # Build target DataLoader; restarted (reshuffled) whenever source outruns it
         tgt_loader = torch.utils.data.DataLoader(
             torch.utils.data.TensorDataset(target_x),
             batch_size=batch_size,
@@ -167,20 +175,28 @@ class DomainAdaptiveTrainer(Trainer):
             total_loss = total_correct = total_n = 0
 
             src_iter = iter(src_loader)
-            tgt_iter = iter(tgt_loader)
-            alpha = self._alpha(epoch, cfg.max_epochs)  # for verbose log + DANN
+            tgt_iter = iter(tgt_loader)  # fresh shuffle each epoch
+            alpha = self._alpha(epoch, cfg.max_epochs)
+            if grl is not None:
+                grl.alpha = alpha  # set once per epoch, not per batch
 
+            step = 0
             while True:
                 try:
                     src_batch = next(src_iter)
-                    tgt_batch = next(tgt_iter)
                 except StopIteration:
                     break
+                try:
+                    tgt_batch = next(tgt_iter)
+                except StopIteration:
+                    tgt_iter = iter(tgt_loader)  # restart with a new shuffle
+                    tgt_batch = next(tgt_iter)
 
                 xb = src_batch[0].to(cfg.device)
                 yb = src_batch[1].to(cfg.device)
                 x_tgt = tgt_batch[0].to(cfg.device)
-                xb = self._inject_noise(xb)
+                xb = self._inject_noise(xb, epoch, step)
+                step += 1
 
                 # Feature extraction (shared encoder + aggregator)
                 feat_src = model.features(xb)       # (N_s, D)
@@ -200,24 +216,16 @@ class DomainAdaptiveTrainer(Trainer):
                     loss = cls_loss + adap.lambda_mmd * adap_loss
 
                 elif self._method == "dann":
-                    # Lazy init of GRL + discriminator on first batch
+                    # Lazy init of discriminator on first batch (feat_dim unknown until here)
                     if discriminator is None:
-                        try:
-                            from ..model.domain_modules import (
-                                GradientReversalLayer, DomainDiscriminator
-                            )
-                        except ImportError:
-                            from model.domain_modules import (
-                                GradientReversalLayer, DomainDiscriminator
-                            )
-                        grl = GradientReversalLayer()
                         feat_dim = feat_src.shape[1]
                         discriminator = DomainDiscriminator(
                             feat_dim, hidden_dim=adap.disc_hidden_dim
                         ).to(cfg.device)
-                        disc_optimizer = self._create_optimizer(discriminator.parameters())
+                        disc_optimizer = torch.optim.Adam(
+                            discriminator.parameters(), lr=adap.disc_lr
+                        )
 
-                    grl.alpha = self._alpha(epoch, cfg.max_epochs)
                     discriminator.train()
                     n_src = feat_src.shape[0]
                     n_tgt = feat_tgt.shape[0]
