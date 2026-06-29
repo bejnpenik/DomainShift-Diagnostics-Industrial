@@ -34,8 +34,8 @@ class DatasetCollection:
 
         reader_path = self._cfg.get('reader')
         if reader_path:
-            from ..reader.config import ReaderConfig
-            from ..reader.reader import UniversalFileReader
+            from reader.config import ReaderConfig
+            from reader.reader import UniversalFileReader
             self._reader = UniversalFileReader(ReaderConfig.from_yaml(reader_path))
         else:
             self._reader = None

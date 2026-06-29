@@ -95,7 +95,8 @@ class MultiDomainSolution:
     """
     config_name: str
     domain_solutions: List[DomainSolution]
-    processor_name: str = ""  # Optional for backwards compatibility
+    processor_name: str = ""
+    config_snapshot: Dict[str, Any] = field(default_factory=dict)
     
     def __post_init__(self):
         if not self.domain_solutions:

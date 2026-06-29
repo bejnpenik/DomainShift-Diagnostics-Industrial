@@ -2,10 +2,10 @@ from __future__ import annotations
 from typing import Dict, Any, Tuple, Callable, Iterator, List
 from dataclasses import dataclass
 
-from ..experiment.config import ExperimentConfig
+from experiment.config import ExperimentConfig
 from .design import ExperimentSpec, StudyDesign
 from .pipeline import PipelineConfig
-from ..collection.task import Task
+from collection.task import Task
 
 import itertools
 
@@ -295,13 +295,13 @@ class StudyGridBuilder:
             adaptation_config_raw = params.get('adaptation_config')
             adaptation_config = None
             if adaptation != 'none' and adaptation_config_raw is not None:
-                from ..training.da_trainer import AdaptationConfig
+                from training.da_trainer import AdaptationConfig
                 if isinstance(adaptation_config_raw, dict):
                     adaptation_config = AdaptationConfig(**adaptation_config_raw)
                 else:
                     adaptation_config = adaptation_config_raw
             elif adaptation != 'none':
-                from ..training.da_trainer import AdaptationConfig
+                from training.da_trainer import AdaptationConfig
                 adaptation_config = AdaptationConfig()
 
             config = ExperimentConfig(

@@ -16,6 +16,6 @@ aggregator:
   levels: [16,4,1]
 
 head:
-  depth: 1
+  depth: 2
   dropout: 0.1
   act: relu

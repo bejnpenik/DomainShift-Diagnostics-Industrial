@@ -293,10 +293,10 @@ def _make_grid_builder(cfg: StudyConfig):
       - file_sampling: dict → FileSamplingProtocol
     """
     from .grid import build_grid_from_dicts
-    from ..model.config import ModelConfig
-    from ..representation.builder import build_processor_config_from_yaml
-    from ..training.config import TrainerConfig
-    from ..experiment.sampling import FileSamplingProtocol
+    from model.config import ModelConfig
+    from representation.builder import build_processor_config_from_yaml
+    from training.config import TrainerConfig
+    from experiment.sampling import FileSamplingProtocol
 
     # --- resolve model/processor YAML paths, rename to ExperimentConfig field names ---
     _YAML_LOADERS = {
@@ -382,7 +382,7 @@ def build_study_design(
     Returns:
         (StudyDesign, Task, filter_combinations) tuple.
     """
-    from ..collection.task_builder import build_task_and_filters_from_yaml
+    from collection.task_builder import build_task_and_filters_from_yaml
 
     task, filters = build_task_and_filters_from_yaml(cfg.task_path, collection)
 

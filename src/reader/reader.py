@@ -5,7 +5,7 @@ from pathlib import Path
 from scipy.io import loadmat
 
 from .config import ReaderConfig
-from ..collection.metadata import Metadata
+from collection.metadata import Metadata
 
 
 class BaseFileReader:

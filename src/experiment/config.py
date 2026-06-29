@@ -3,14 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal, Tuple
 
-from ..representation import ProcessorConfig
-from ..training.config import TrainerConfig
-from ..model.config import ModelConfig
+from representation import ProcessorConfig
+from training.config import TrainerConfig
+from model.config import ModelConfig
 from .sampling import FileSamplingProtocol
-from ..study.pipeline import PipelineConfig
+from study.pipeline import PipelineConfig
 
 if TYPE_CHECKING:
-    from ..training.da_trainer import AdaptationConfig
+    from training.da_trainer import AdaptationConfig
 
 _DA_METHODS = frozenset({"none", "coral", "dann", "mmd", "mixup", "irm"})
 
@@ -57,6 +57,23 @@ class ExperimentConfig:
             raise ValueError(
                 f"adaptation='{self.adaptation}' requires adaptation_config to be set."
             )
+
+    def to_dict(self) -> dict:
+        """Return a JSON-safe snapshot of this config for embedding in results."""
+        d: dict = {
+            "name": self.name,
+            "adaptation": self.adaptation,
+            "normalization": self.normalization,
+            "train_val_split_ratio": self.train_val_split_ratio,
+            "model": self.model_config.name,
+            "processor": self.processor_name,
+            "pipeline_primary": self.pipeline.primary if self.pipeline else None,
+            "pipeline_conditioning": self.pipeline.conditioning_names if self.pipeline else [],
+        }
+        d["trainer"] = self.trainer_config.model_dump()
+        if self.adaptation_config is not None:
+            d["adaptation_config"] = self.adaptation_config.model_dump()
+        return d
 
     @property
     def processor_name(self) -> str:

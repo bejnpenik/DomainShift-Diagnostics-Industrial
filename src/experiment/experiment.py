@@ -4,26 +4,27 @@ import torch.nn as nn
 import random
 import dataclasses
 
+from pathlib import Path
 from sklearn.model_selection import train_test_split
 
 from dataclasses import dataclass
 from typing import Literal
 
-from ..collection import Task
-from ..collection import DatasetCollection
-from ..collection import DatasetPlan
-from ..reader import BaseFileReader
+from collection import Task
+from collection import DatasetCollection
+from collection import DatasetPlan
+from reader import BaseFileReader
 from .config import ExperimentConfig
 from .sampling import FileSampler
 from .dataset import DomainDataset
 
-from ..normalization import Normalisator
+from normalization import Normalisator
 
-from ..training import Trainer, TrainResult
+from training import Trainer, TrainResult
 
-from ..results import DomainSolution, MultiDomainSolution, RepeatedMultiDomainSolution
+from results import DomainSolution, MultiDomainSolution, RepeatedMultiDomainSolution
 
-from ..representation import create_processor
+from representation import create_processor
 
 _DA_METHODS = frozenset({"coral", "dann", "mmd"})
 _DG_METHODS = frozenset({"mixup", "irm"})
@@ -174,7 +175,8 @@ class Experiment:
     def run_pairwise(
         self,
         task: Task,
-        filter_combinations: tuple[dict, ...]
+        filter_combinations: tuple[dict, ...],
+        model_save_dir: Path | None = None,
     ) -> MultiDomainSolution:
         """
         Train on each filter combo, test on all combos (including itself).
@@ -193,7 +195,14 @@ class Experiment:
             # Train
             experiment_train_result = self.train_on_plan(train_plan)
             train_result = experiment_train_result.train_result
-            
+
+            if model_save_dir is not None:
+                model_save_dir.mkdir(parents=True, exist_ok=True)
+                torch.save(
+                    train_result.model.state_dict(),
+                    model_save_dir / f"{train_plan.label}.pt",
+                )
+
             # Training metadata
             train_metadata = {
                 'train_epoch_nbr': train_result.epochs_run,
@@ -260,6 +269,7 @@ class Experiment:
         filter_combinations: tuple[dict, ...],
         method: str,
         adaptation_config,
+        model_save_dir: Path | None = None,
     ) -> MultiDomainSolution:
         """Like run_pairwise but co-trains with unlabeled data from all other domains.
 
@@ -276,7 +286,7 @@ class Experiment:
         Returns:
             MultiDomainSolution (same container as run_pairwise).
         """
-        from ..training.da_trainer import DomainAdaptiveTrainer
+        from training.da_trainer import DomainAdaptiveTrainer
 
         domain_solutions = []
 
@@ -303,6 +313,13 @@ class Experiment:
                 self._config.trainer_config, adaptation_config, method
             )
             train_result = trainer.fit(model, train_data, val_data, target_x)
+
+            if model_save_dir is not None:
+                model_save_dir.mkdir(parents=True, exist_ok=True)
+                torch.save(
+                    train_result.model.state_dict(),
+                    model_save_dir / f"{train_plan.label}.pt",
+                )
 
             train_metadata = {
                 "train_epoch_nbr": train_result.epochs_run,
@@ -402,6 +419,7 @@ class Experiment:
         filter_combinations: tuple[dict, ...],
         method: str,
         adaptation_config,
+        model_save_dir: Path | None = None,
     ) -> MultiDomainSolution:
         """Leave-one-out domain generalization.
 
@@ -419,7 +437,7 @@ class Experiment:
         Returns:
             MultiDomainSolution.
         """
-        from ..training.dg_trainer import DomainGeneralizationTrainer
+        from training.dg_trainer import DomainGeneralizationTrainer
 
         all_plans = [
             self._collection.construct_dataset_plan(task, **f)
@@ -452,6 +470,13 @@ class Experiment:
             # Label for this DomainSolution (combined source)
             src_labels = [all_plans[i].label for i in source_indices]
             combined_label = "+".join(src_labels)
+
+            if model_save_dir is not None:
+                model_save_dir.mkdir(parents=True, exist_ok=True)
+                torch.save(
+                    train_result.model.state_dict(),
+                    model_save_dir / f"{combined_label}.pt",
+                )
 
             train_metadata = {
                 "train_epoch_nbr": train_result.epochs_run,
@@ -502,6 +527,7 @@ class Experiment:
         self,
         task: Task,
         filter_combinations: tuple[dict, ...],
+        model_save_dir: Path | None = None,
     ) -> MultiDomainSolution:
         """Dispatch to the correct experiment mode based on config.adaptation.
 
@@ -513,22 +539,22 @@ class Experiment:
         adap_cfg = self._config.adaptation_config
 
         if method == "none" or method is None:
-            return self.run_pairwise(task, filter_combinations)
+            return self.run_pairwise(task, filter_combinations, model_save_dir)
 
         if method in _DA_METHODS:
             if adap_cfg is None:
-                from ..training.da_trainer import AdaptationConfig
+                from training.da_trainer import AdaptationConfig
                 adap_cfg = AdaptationConfig()
             return self.run_pairwise_with_adaptation(
-                task, filter_combinations, method, adap_cfg
+                task, filter_combinations, method, adap_cfg, model_save_dir
             )
 
         if method in _DG_METHODS:
             if adap_cfg is None:
-                from ..training.da_trainer import AdaptationConfig
+                from training.da_trainer import AdaptationConfig
                 adap_cfg = AdaptationConfig()
             return self.run_leave_one_out_dg(
-                task, filter_combinations, method, adap_cfg
+                task, filter_combinations, method, adap_cfg, model_save_dir
             )
 
         raise ValueError(
@@ -693,7 +719,7 @@ class ExperimentRunner:
 
         if method in _DA_METHODS:
             if adap_cfg is None:
-                from ..training.da_trainer import AdaptationConfig
+                from training.da_trainer import AdaptationConfig
                 adap_cfg = AdaptationConfig()
             return self.run_multi_seed_with_adaptation(
                 task, filter_combinations, seeds, method, adap_cfg
@@ -701,7 +727,7 @@ class ExperimentRunner:
 
         if method in _DG_METHODS:
             if adap_cfg is None:
-                from ..training.da_trainer import AdaptationConfig
+                from training.da_trainer import AdaptationConfig
                 adap_cfg = AdaptationConfig()
             return self.run_multi_seed_leave_one_out_dg(
                 task, filter_combinations, seeds, method, adap_cfg

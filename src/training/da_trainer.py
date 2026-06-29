@@ -138,7 +138,7 @@ class DomainAdaptiveTrainer(Trainer):
         # GRL is created eagerly (no feat_dim needed); discriminator is lazy (feat_dim unknown)
         if self._method == "dann":
             try:
-                from ..model.domain_modules import GradientReversalLayer, DomainDiscriminator
+                from model.domain_modules import GradientReversalLayer, DomainDiscriminator
             except ImportError:
                 from model.domain_modules import GradientReversalLayer, DomainDiscriminator
             grl: GradientReversalLayer | None = GradientReversalLayer()

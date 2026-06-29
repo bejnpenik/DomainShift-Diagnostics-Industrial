@@ -1,0 +1,17 @@
+# Storage policy for study runs.
+# Controls which artifacts are persisted alongside results.pkl.
+#
+# Confusion matrices and training metrics are always saved (core result).
+
+# Save each trained model's state dict as a .pt file.
+# Layout: models/{spec_name}/seed_{seed}/{domain_label}.pt
+# Load later: model.load_state_dict(torch.load(...)) → model.features(x)
+save_model_weights: true
+
+# Embed a plain-dict snapshot of ExperimentConfig in each MultiDomainSolution.
+# Makes results self-describing without needing design.pkl.
+save_config_snapshot: true
+
+# Save design.pkl alongside results.pkl.
+# Enables full StudyDesign recovery (task, filter_combinations, all specs).
+save_study_design: true

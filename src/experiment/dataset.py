@@ -3,13 +3,13 @@ from __future__ import annotations
 import torch
 
 from .sampling import FileSampler
-from ..reader.reader import BaseFileReader
-from ..collection.collection import DatasetCollection
-from ..collection.dataset_plan import DatasetPlan
-from ..collection.channels import SignalChannelConfig, MetadataChannelConfig
-from ..normalization.normalization import Normalisator
-from ..representation import Processor
-from ..study.pipeline import PipelineConfig, ConditioningSource
+from reader.reader import BaseFileReader
+from collection.collection import DatasetCollection
+from collection.dataset_plan import DatasetPlan
+from collection.channels import SignalChannelConfig, MetadataChannelConfig
+from normalization.normalization import Normalisator
+from representation import Processor
+from study.pipeline import PipelineConfig, ConditioningSource
 
 
 class DomainDataset:

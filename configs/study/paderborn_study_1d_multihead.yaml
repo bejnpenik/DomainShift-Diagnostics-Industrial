@@ -1,4 +1,4 @@
-# CWRU bearing fault element classification — full study
+# Paderborn bearing fault element classification — full study
 #
 # This YAML drives the entire experiment sweep:
 #   - Which collection and task to use
@@ -10,9 +10,9 @@
 # Total grid: 2 × 3 × 3 × 3 × 2 = 108 configurations
 # Total runs: 108 × 3 seeds = 324 (× domains for pairwise)
 
-name: cwru_study
-collection: cwru
-task: configs/tasks/cwru_fault_element.yaml
+name: paderborn_study
+collection: paderborn
+task: configs/tasks/paderborn_fault_element.yaml
 seeds: [11, 32, 52, 64, 97, 105, 139, 222, 345, 1023]
 
 grid:
@@ -20,9 +20,7 @@ grid:
   # Grid factors — cartesian product of all value combinations
   # ---------------------------------------------------------------
   factors:
-    model_type: [1d, 2d]
-    model_variant: [1x1, 2x2, 4x4, multihead]
-    sampling_rate: [12000, 48000]
+    sampling_rate: [12000, 48000, 64000]
     normalization: [dataset, sample, none]
     optimizer_name: [adamw, sgd]
 
@@ -35,6 +33,8 @@ grid:
   #   noise list          → GaussianNoise(mean=0.1, std=0.1)
   # ---------------------------------------------------------------
   independent:
+    model_type: 1d
+    model_variant: multihead
     pipeline:
       primary: vibration
     file_sampling:

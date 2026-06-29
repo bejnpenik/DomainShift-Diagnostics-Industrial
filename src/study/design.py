@@ -1,8 +1,8 @@
 from dataclasses import dataclass, field
 
-from ..experiment.config import ExperimentConfig
+from experiment.config import ExperimentConfig
 
-from ..collection.task import Task
+from collection.task import Task
 
 
 
