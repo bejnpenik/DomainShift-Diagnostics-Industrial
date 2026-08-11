@@ -315,3 +315,44 @@ class TestBuilderAttentionLayers:
         out = model(x)
         assert out.shape == (2, 3)
         out.sum().backward()
+
+
+# =====================================================================
+# New YAML configs — forward + backward
+# =====================================================================
+
+_NEW_CONFIGS_1D = [
+    "cnn1d_res.yaml",
+    "cnn1d_se.yaml",
+    "cnn1d_eca.yaml",
+    "cnn1d_res_se.yaml",
+]
+
+_NEW_CONFIGS_2D = [
+    "cnn2d_res.yaml",
+    "cnn2d_se.yaml",
+    "cnn2d_eca.yaml",
+    "cnn2d_res_se.yaml",
+]
+
+
+class TestNewYAMLConfigs1D:
+    @pytest.mark.parametrize("filename", _NEW_CONFIGS_1D)
+    def test_forward_and_backward(self, filename):
+        model = build_model_from_yaml(_CONFIGS_DIR / filename, num_classes=4)
+        x = torch.randn(4, 1, 600)
+        out = model(x)
+        assert out.shape == (4, 4)
+        out.sum().backward()
+        assert any(p.grad is not None and torch.any(p.grad != 0) for p in model.parameters())
+
+
+class TestNewYAMLConfigs2D:
+    @pytest.mark.parametrize("filename", _NEW_CONFIGS_2D)
+    def test_forward_and_backward(self, filename):
+        model = build_model_from_yaml(_CONFIGS_DIR / filename, num_classes=4)
+        x = torch.randn(4, 1, 129, 38)
+        out = model(x)
+        assert out.shape == (4, 4)
+        out.sum().backward()
+        assert any(p.grad is not None and torch.any(p.grad != 0) for p in model.parameters())

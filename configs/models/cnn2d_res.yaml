@@ -1,0 +1,21 @@
+name: cnn2d_res
+type: 2d
+
+encoder:
+  - [res, 1, 2, {k: [3,1], s: 1, blocks: 1, act: relu}]
+  - [pool, {k: [2,1], s: [2,1], p: [1,0]}]
+  - [dropout, 0.01]
+  - [res, 2, 4, {k: [3,1], s: 1, blocks: 1, act: relu}]
+  - [pool, {k: [2,1], s: [2,1], p: [1,0]}]
+  - [dropout, 0.01]
+  - [res, 4, 8, {k: 3, s: 2, blocks: 1, act: relu}]
+  - [pool, {k: 2, s: 2, p: 0}]
+
+aggregator:
+  type: adaptive
+  levels: 1
+
+head:
+  depth: 1
+  dropout: 0.1
+  act: relu
