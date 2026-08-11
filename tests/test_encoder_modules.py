@@ -237,3 +237,81 @@ class TestECA2D:
         out = eca(x)
         out.sum().backward()
         assert x.grad is not None
+
+
+# =====================================================================
+# Builder wiring — res / se / eca
+# =====================================================================
+
+class TestBuilderAttentionLayers:
+    def test_se_without_preceding_conv_raises(self):
+        cfg = {
+            "type": "1d",
+            "encoder": [["se", {"r": 2}]],
+        }
+        with pytest.raises(ValueError, match="must follow a conv or res"):
+            build_model(cfg, num_classes=3)
+
+    def test_eca_without_preceding_conv_raises(self):
+        cfg = {
+            "type": "1d",
+            "encoder": [["eca", {"k": 3}]],
+        }
+        with pytest.raises(ValueError, match="must follow a conv or res"):
+            build_model(cfg, num_classes=3)
+
+    def test_se_after_res(self):
+        cfg = {
+            "type": "1d",
+            "encoder": [
+                ["res", 1, 4, {"k": 3, "s": 1}],
+                ["se", {"r": 2}],
+            ],
+            "aggregator": {"type": "adaptive", "levels": 1},
+        }
+        model = build_model(cfg, num_classes=3)
+        out = model(torch.randn(2, 1, 64))
+        assert out.shape == (2, 3)
+
+    def test_eca_after_conv_pool_dropout(self):
+        """Attention validity is 'appeared earlier', not 'immediately precedes'."""
+        cfg = {
+            "type": "1d",
+            "encoder": [
+                ["conv", 1, 4, {"k": 3, "s": 1}],
+                ["pool", {"k": 2, "s": 2}],
+                ["dropout", 0.1],
+                ["eca", {"k": 3}],
+            ],
+            "aggregator": {"type": "adaptive", "levels": 1},
+        }
+        model = build_model(cfg, num_classes=3)
+        out = model(torch.randn(2, 1, 64))
+        assert out.shape == (2, 3)
+
+    def test_res_updates_head_input_size(self):
+        cfg = {
+            "type": "1d",
+            "encoder": [
+                ["conv", 1, 2, {"k": 3, "s": 1}],
+                ["res", 2, 8, {"k": 3, "s": 1}],
+            ],
+            "aggregator": {"type": "adaptive", "levels": 1},
+            "head": {"depth": 1},
+        }
+        model = build_model(cfg, num_classes=3)
+        assert model.head.m[0].in_features == 8
+
+    def test_res_encoder_forward_and_backward(self):
+        cfg = {
+            "type": "2d",
+            "encoder": [
+                ["res", 1, 4, {"k": 3, "s": 2}],
+            ],
+            "aggregator": {"type": "adaptive", "levels": 1},
+        }
+        model = build_model(cfg, num_classes=3)
+        x = torch.randn(2, 1, 16, 16)
+        out = model(x)
+        assert out.shape == (2, 3)
+        out.sum().backward()

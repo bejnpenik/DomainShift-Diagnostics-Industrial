@@ -39,6 +39,8 @@ from .modules import (
     Conv1D, Conv2D, Pool1D, Pool2D,
     AdaptivePool1D, AdaptivePool2D,
     MultiHeadPool1D, MultiHeadPool2D,
+    ResBlock1D, ResBlock2D,
+    SE1D, SE2D, ECA1D, ECA2D,
     MLP,
 )
 
@@ -53,6 +55,9 @@ _MODULE_MAP = {
         "adaptive": AdaptivePool1D,
         "multihead": MultiHeadPool1D,
         "dropout": nn.Dropout,
+        "res": ResBlock1D,
+        "se": SE1D,
+        "eca": ECA1D,
     },
     "2d": {
         "conv": Conv2D,
@@ -60,6 +65,9 @@ _MODULE_MAP = {
         "adaptive": AdaptivePool2D,
         "multihead": MultiHeadPool2D,
         "dropout": nn.Dropout2d,
+        "res": ResBlock2D,
+        "se": SE2D,
+        "eca": ECA2D,
     },
 }
 
@@ -130,6 +138,25 @@ def _build_encoder(layers: list[list], dim_type: str) -> tuple[nn.Sequential, in
                 bn=params.get("bn", False),
             ))
             output_channels = out_ch
+
+        elif layer_type == "res":
+            in_ch, out_ch = spec[1], spec[2]
+            params = spec[3] if len(spec) > 3 else {}
+            built.append(modules["res"](
+                input=in_ch,
+                output=out_ch,
+                k=_coerce_tuple(params.get("k", 3)),
+                s=_coerce_tuple(params.get("s", 1)),
+                blocks=params.get("blocks", 1),
+                act=_parse_act(params.get("act", "relu")) or nn.ReLU(),
+            ))
+            output_channels = out_ch
+
+        elif layer_type in ("se", "eca"):
+            if output_channels == 0:
+                raise ValueError(f"'{layer_type}' must follow a conv or res layer")
+            params = spec[1] if len(spec) > 1 else {}
+            built.append(modules[layer_type](channels=output_channels, **params))
 
         elif layer_type == "pool":
             params = spec[1] if len(spec) > 1 else {}
