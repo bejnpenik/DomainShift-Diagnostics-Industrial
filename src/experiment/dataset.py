@@ -101,6 +101,15 @@ class DomainDataset:
                 signal = raw[ch_cfg.reader_channel]
                 sr = self._resolve_sampling_rate(ch_cfg, metadata)
                 seg = self._processor.segment_raw(signal, sr)
+                if seg.shape[0] != n_windows:
+                    raise ValueError(
+                        f"Conditioning channel '{src.channel}' produced "
+                        f"{seg.shape[0]} windows but the primary channel "
+                        f"produced {n_windows}. Conditioning and primary "
+                        "channels must segment to the same window count — "
+                        "check that their sampling rates and recorded "
+                        "durations match."
+                    )
                 if src.reduce == 'mean':
                     parts.append(seg.mean(dim=-1, keepdim=True))
                 elif src.reduce == 'none':

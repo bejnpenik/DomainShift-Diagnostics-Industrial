@@ -270,12 +270,8 @@ class DomainAdaptiveTrainer(Trainer):
                 )
                 verbosity = epoch // cfg.verbose_level
 
-            if stopper and epoch >= cfg.min_epochs:
-                if stopper.step(val_loss, model):
-                    if cfg.verbose_level > 0:
-                        print(f"Early stopping at epoch {epochs_run}")
-                    model.load_state_dict(stopper.best_state())
-                    break
+            if self._handle_early_stopping(stopper, val_loss, model, epoch, epochs_run):
+                break
 
         return TrainResult(
             model=model,

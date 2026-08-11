@@ -151,6 +151,23 @@ class TestEarlyStopper:
         assert isinstance(best, dict)
         assert "weight" in list(best.keys())[0]
 
+    def test_nan_val_loss_never_improves(self):
+        """NaN must never be treated as an improvement (NaN < x is always False,
+        but this must be explicit rather than relying on that comparison quirk)."""
+        stopper = EarlyStopper(patience=2)
+        model = nn.Linear(10, 2)
+        assert not stopper.step(float("nan"), model)  # count=1
+        assert not stopper.step(float("nan"), model)  # count=2
+        assert stopper.step(float("nan"), model)      # count=3 > patience
+        assert stopper.best_state() is None
+
+    def test_inf_val_loss_never_improves(self):
+        stopper = EarlyStopper(patience=1)
+        model = nn.Linear(10, 2)
+        assert not stopper.step(float("inf"), model)
+        assert stopper.step(float("inf"), model)
+        assert stopper.best_state() is None
+
     def test_best_state_is_copy(self):
         """Modifying model after step shouldn't affect saved state."""
         stopper = EarlyStopper(patience=2)
@@ -344,6 +361,31 @@ class TestTrainer:
         trainer.fit(model, train_data, val_data)
         captured = capsys.readouterr()
         assert captured.out == ""
+
+    def test_fit_survives_nan_val_loss_without_crashing(self, monkeypatch):
+        """If validation loss is NaN for the whole run, early stopping must not
+        crash trying to restore a checkpoint that was never recorded."""
+        monkeypatch.setattr(
+            Trainer, "_validate",
+            lambda self, model, val_data, criterion: (float("nan"), 0.0),
+        )
+        cfg = TrainerConfig(
+            max_epochs=10,
+            device="cpu",
+            early_stopping=(2, 0.0),
+            min_epochs=0,
+            noise=None,
+            verbose_level=0,
+        )
+        trainer = Trainer(cfg)
+        model = nn.Sequential(nn.Flatten(), nn.Linear(600, 3))
+        train_data = _make_data(50, 600, 3)
+        val_data = _make_data(20, 600, 3)
+
+        result = trainer.fit(model, train_data, val_data)  # must not raise
+
+        assert isinstance(result, TrainResult)
+        assert result.epochs_run < 10  # stopped early once patience exceeded
 
     def test_noise_injection_is_reproducible(self):
         """Two Trainer runs with the same random_seed and noise config must produce

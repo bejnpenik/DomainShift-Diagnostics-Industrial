@@ -535,8 +535,14 @@ class TestSetSeed:
 
 class TestExperiment:
     def test_construction(self):
-        config = _make_experiment_config()
+        from study.pipeline import PipelineConfig
+        from collection.channels import SignalChannelConfig
+
+        config = _make_experiment_config(pipeline=PipelineConfig(primary="vibration"))
         collection = MagicMock()
+        collection.channels = {
+            "vibration": SignalChannelConfig(reader_channel="vibration", sampling_rate=12000),
+        }
         reader = MagicMock()
         experiment = Experiment(
             collection=collection,

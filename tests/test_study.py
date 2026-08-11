@@ -319,6 +319,88 @@ class TestStudy:
             )
             assert results_path.exists()
 
+    def test_run_isolates_spec_failures(self, monkeypatch):
+        """One spec raising must not abort the study or lose other specs' results."""
+
+        class _FakeExperiment:
+            def __init__(self, collection, reader, config):
+                self._config = config
+
+            def run(self, task, filter_combinations, model_save_dir):
+                if self._config.name == "bad_spec":
+                    raise RuntimeError("boom")
+                return _make_multi_domain_solution(self._config.name, seed=self._config.random_seed)
+
+        monkeypatch.setattr("study.study.Experiment", _FakeExperiment)
+
+        design = StudyDesign(
+            name="test",
+            experiment_specs=(
+                _make_experiment_spec("good_spec"),
+                _make_experiment_spec("bad_spec"),
+            ),
+            seeds=(42,),
+        )
+        runner = Study(collection=MagicMock(), reader=MagicMock())
+        result = runner.run(design, verbose=False)
+
+        assert result.config_names == ["good_spec"]
+
+    def test_run_isolates_seed_failures_within_spec(self, monkeypatch):
+        """One bad seed must not lose the results of other seeds in the same spec."""
+
+        class _FakeExperiment:
+            def __init__(self, collection, reader, config):
+                self._config = config
+
+            def run(self, task, filter_combinations, model_save_dir):
+                if self._config.random_seed == 99:
+                    raise RuntimeError("boom")
+                return _make_multi_domain_solution(self._config.name, seed=self._config.random_seed)
+
+        monkeypatch.setattr("study.study.Experiment", _FakeExperiment)
+
+        design = StudyDesign(
+            name="test",
+            experiment_specs=(_make_experiment_spec("exp1"),),
+            seeds=(42, 99),
+        )
+        runner = Study(collection=MagicMock(), reader=MagicMock())
+        result = runner.run(design, verbose=False)
+
+        rs = result.get_by_config("exp1")
+        assert rs.seeds == [42]
+
+    def test_run_and_save_checkpoints_survive_a_later_spec_failure(self, monkeypatch):
+        """A crash in a later spec must not prevent earlier results from being saved."""
+
+        class _FakeExperiment:
+            def __init__(self, collection, reader, config):
+                self._config = config
+
+            def run(self, task, filter_combinations, model_save_dir):
+                if self._config.name == "bad_spec":
+                    raise RuntimeError("boom")
+                return _make_multi_domain_solution(self._config.name, seed=self._config.random_seed)
+
+        monkeypatch.setattr("study.study.Experiment", _FakeExperiment)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            design = StudyDesign(
+                name="test",
+                experiment_specs=(
+                    _make_experiment_spec("good_spec"),
+                    _make_experiment_spec("bad_spec"),
+                ),
+                seeds=(42,),
+            )
+            runner = Study(collection=MagicMock(), reader=MagicMock(), results_dir=Path(tmpdir))
+            results, save_dir = runner.run_and_save(design, verbose=False)
+
+            assert results.config_names == ["good_spec"]
+            loaded_solution, _ = Study.load(save_dir)
+            assert loaded_solution.config_names == ["good_spec"]
+
 
 # =====================================================================
 # DependentFactor

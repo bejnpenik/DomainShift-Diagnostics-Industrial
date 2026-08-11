@@ -91,6 +91,20 @@ class DomainGeneralizationTrainer(Trainer):
         adap = self._adap_cfg
         batch_size = adap.batch_size
 
+        # Per-domain loaders below use drop_last=True. A domain with fewer
+        # samples than batch_size would produce a loader with zero batches,
+        # and _cycling_loader spins forever on an empty loader (no error, no
+        # timeout — just a hang). Fail fast instead.
+        for idx, (X, _) in enumerate(source_datasets):
+            if len(X) < batch_size:
+                raise ValueError(
+                    f"Source domain {idx} has {len(X)} samples, fewer than "
+                    f"batch_size={batch_size}. Per-domain loaders use "
+                    "drop_last=True, so an undersized domain would produce "
+                    "zero batches and hang the training loop indefinitely. "
+                    "Reduce batch_size or provide more samples for this domain."
+                )
+
         model = model.to(cfg.device)
         optimizer = self._create_optimizer(model.parameters())
         criterion = nn.CrossEntropyLoss()
@@ -157,12 +171,8 @@ class DomainGeneralizationTrainer(Trainer):
                 )
                 verbosity = epoch // cfg.verbose_level
 
-            if stopper and epoch >= cfg.min_epochs:
-                if stopper.step(val_loss, model):
-                    if cfg.verbose_level > 0:
-                        print(f"Early stopping at epoch {epochs_run}")
-                    model.load_state_dict(stopper.best_state())
-                    break
+            if self._handle_early_stopping(stopper, val_loss, model, epoch, epochs_run):
+                break
 
         return TrainResult(
             model=model,

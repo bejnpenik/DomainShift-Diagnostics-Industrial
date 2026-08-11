@@ -67,6 +67,7 @@ class Study:
         builder.set_metadata('design_metadata', design.metadata)
 
         total_specs = len(design.experiment_specs)
+        failed_specs: List[str] = []
 
         for spec_idx, spec in enumerate(design.experiment_specs):
             if verbose:
@@ -80,17 +81,45 @@ class Study:
                 print(f"Seeds: {design.seeds}")
                 print(f"{'='*70}")
 
-            # Run across all seeds for this spec
-            multi_domain_solutions = self._run_spec_multi_seed(
-                spec=spec,
-                seeds=design.seeds,
-                verbose=verbose,
-                save_dir=save_dir,
-            )
+            # Run across all seeds for this spec. A spec-level failure must not
+            # abort the rest of the study — every prior/subsequent spec's results
+            # would otherwise be lost since builder.build() only runs at the end.
+            try:
+                multi_domain_solutions = self._run_spec_multi_seed(
+                    spec=spec,
+                    seeds=design.seeds,
+                    verbose=verbose,
+                    save_dir=save_dir,
+                )
+            except Exception as exc:
+                print(f"\n!!! Experiment spec '{spec.name}' failed entirely: "
+                      f"{exc!r} — skipping.")
+                failed_specs.append(spec.name)
+                continue
+
+            if not multi_domain_solutions:
+                print(f"\n!!! Experiment spec '{spec.name}' produced no results "
+                      "— skipping.")
+                failed_specs.append(spec.name)
+                continue
 
             # Add all solutions to builder
             for mds in multi_domain_solutions:
                 builder.add_multi_domain_solution(mds)
+
+            # Persist a checkpoint after each spec so a later crash/hang doesn't
+            # lose work that already completed. Reuses the existing save() path
+            # and overwrites the same save_dir in place.
+            if save_dir is not None:
+                try:
+                    partial = builder.build()
+                except ValueError:
+                    pass  # nothing has succeeded yet
+                else:
+                    self.save(design.name, partial, design=design, save_dir=save_dir)
+
+        if failed_specs and verbose:
+            print(f"\n{len(failed_specs)}/{total_specs} spec(s) failed: {failed_specs}")
 
         return builder.build()
 
@@ -109,26 +138,31 @@ class Study:
             if verbose:
                 print(f"\n--- Seed {seed_idx + 1}/{len(seeds)}: {seed} ---")
 
-            # Create config with this seed
-            config = dataclasses.replace(spec.config, random_seed=seed)
+            try:
+                # Create config with this seed
+                config = dataclasses.replace(spec.config, random_seed=seed)
 
-            # Create experiment instance (processor created from config inside Experiment)
-            experiment = Experiment(
-                collection=self._collection,
-                reader=self._reader,
-                config=config
-            )
+                # Create experiment instance (processor created from config inside Experiment)
+                experiment = Experiment(
+                    collection=self._collection,
+                    reader=self._reader,
+                    config=config
+                )
 
-            model_save_dir = (
-                save_dir / "models" / spec.name / f"seed_{seed}"
-                if save_dir is not None and self._storage.save_model_weights
-                else None
-            )
+                model_save_dir = (
+                    save_dir / "models" / spec.name / f"seed_{seed}"
+                    if save_dir is not None and self._storage.save_model_weights
+                    else None
+                )
 
-            mds = experiment.run(spec.task, spec.filter_combinations, model_save_dir)
+                mds = experiment.run(spec.task, spec.filter_combinations, model_save_dir)
 
-            if self._storage.save_config_snapshot:
-                mds.config_snapshot = spec.config.to_dict()
+                if self._storage.save_config_snapshot:
+                    mds.config_snapshot = spec.config.to_dict()
+            except Exception as exc:
+                print(f"\n!!! Spec '{spec.name}' seed {seed} failed: {exc!r} "
+                      "— skipping this seed.")
+                continue
 
             multi_domain_solutions.append(mds)
 

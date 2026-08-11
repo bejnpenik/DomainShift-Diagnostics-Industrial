@@ -69,6 +69,42 @@ class Trainer:
         x_noisy[mask] = x[mask] + noise[mask]
         return x_noisy
 
+    def _handle_early_stopping(
+        self,
+        stopper: EarlyStopper | None,
+        val_loss: float,
+        model: nn.Module,
+        epoch: int,
+        epochs_run: int,
+    ) -> bool:
+        """Check early stopping and restore the best checkpoint if triggered.
+
+        Shared by Trainer, DomainAdaptiveTrainer, and DomainGeneralizationTrainer
+        so the "no best checkpoint was ever recorded" case (e.g. val_loss was
+        NaN/Inf for the whole run) is handled once instead of independently in
+        three fit() loops.
+
+        Returns:
+            True if the caller should break out of the training loop.
+        """
+        cfg = self._config
+        if not stopper or epoch < cfg.min_epochs:
+            return False
+        if not stopper.step(val_loss, model):
+            return False
+        if cfg.verbose_level > 0:
+            print(f"Early stopping at epoch {epochs_run}")
+        best_state = stopper.best_state()
+        if best_state is not None:
+            model.load_state_dict(best_state)
+        elif cfg.verbose_level > 0:
+            print(
+                "Warning: no improved checkpoint was ever recorded (validation "
+                "loss was never finite) — keeping current model weights instead "
+                "of restoring a best checkpoint."
+            )
+        return True
+
     def _validate(
         self, model: nn.Module, val_data: tuple,
         criterion: nn.Module,
@@ -157,12 +193,8 @@ class Trainer:
                 )
                 verbosity = epoch // cfg.verbose_level
 
-            if stopper and epoch >= cfg.min_epochs:
-                if stopper.step(val_loss, model):
-                    if cfg.verbose_level > 0:
-                        print(f"Early stopping at epoch {epochs_run}")
-                    model.load_state_dict(stopper.best_state())
-                    break
+            if self._handle_early_stopping(stopper, val_loss, model, epoch, epochs_run):
+                break
 
         return TrainResult(
             model=model,

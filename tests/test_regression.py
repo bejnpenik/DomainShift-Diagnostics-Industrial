@@ -164,7 +164,6 @@ class TestSignalPipelineRegression:
     def test_raw_pipeline_48k_to_12k(self):
         from representation.signal.config import SignalProcessorConfig, RawViewConfig
         from representation.signal.processor import SignalProcessor
-        from collection import Metadata
 
         cfg = SignalProcessorConfig(
             name="raw_12k",
@@ -175,8 +174,7 @@ class TestSignalPipelineRegression:
         )
         proc = SignalProcessor(cfg)
         signal = np.random.RandomState(42).randn(48000).astype(np.float32)
-        meta = Metadata({"sampling_rate": 48000})
-        result = proc(signal, meta)
+        result = proc(signal, 48000)
         assert tuple(result.shape) == (39, 1, 600)
         assert result.sum().item() == pytest.approx(-25.880222, abs=1e-2)
         assert result.mean().item() == pytest.approx(-0.001106, abs=1e-4)
@@ -184,7 +182,6 @@ class TestSignalPipelineRegression:
     def test_raw_pipeline_same_rate(self):
         from representation.signal.config import SignalProcessorConfig, RawViewConfig
         from representation.signal.processor import SignalProcessor
-        from collection import Metadata
 
         cfg = SignalProcessorConfig(
             name="raw_12k",
@@ -195,15 +192,13 @@ class TestSignalPipelineRegression:
         )
         proc = SignalProcessor(cfg)
         signal = np.random.RandomState(42).randn(12000).astype(np.float32)
-        meta = Metadata({"sampling_rate": 12000})
-        result = proc(signal, meta)
+        result = proc(signal, 12000)
         assert tuple(result.shape) == (39, 1, 600)
         assert result.sum().item() == pytest.approx(-128.675247, abs=1e-2)
 
     def test_spec_pipeline_48k_to_12k(self):
         from representation.signal.config import SignalProcessorConfig, STFTViewConfig
         from representation.signal.processor import SignalProcessor
-        from collection import Metadata
 
         cfg = SignalProcessorConfig(
             name="spec_12k",
@@ -214,8 +209,7 @@ class TestSignalPipelineRegression:
         )
         proc = SignalProcessor(cfg)
         signal = np.random.RandomState(42).randn(48000).astype(np.float32)
-        meta = Metadata({"sampling_rate": 48000})
-        result = proc(signal, meta)
+        result = proc(signal, 48000)
         assert tuple(result.shape) == (39, 1, 129, 5)
         assert result.sum().item() == pytest.approx(35160.882812, abs=2.0)
         assert result.mean().item() == pytest.approx(1.397769, abs=1e-3)
@@ -509,7 +503,7 @@ class TestCollectionCWRURegression:
     @pytest.fixture(autouse=True)
     def setup(self):
         from collection import DatasetCollection, Task, Rule, Interactions
-        self.collection = DatasetCollection('configs/cwru.yaml')
+        self.collection = DatasetCollection('configs/collections/cwru.yaml')
         self.Task = Task
         self.Rule = Rule
         self.Interactions = Interactions
@@ -528,8 +522,8 @@ class TestCollectionCWRURegression:
         assert c.get_filter_value_from_description('fault_element', 'inner ring') == 1
         assert c.get_filter_value_from_description('fault_element', 'outer ring') == 2
         assert c.get_filter_value_from_description('fault_element', 'ball') == 3
-        assert c.get_filter_value_from_description('sampling_rate', 12000) == 1
-        assert c.get_filter_value_from_description('sampling_rate', 48000) == 2
+        assert c.get_filter_value_from_description('sampling_rate', '12k') == 1
+        assert c.get_filter_value_from_description('sampling_rate', '48k') == 2
 
     def test_valid_filter_combinations(self):
         c = self.collection
@@ -552,7 +546,7 @@ class TestCollectionCWRURegression:
                     fixed={'fault_size': 0},
                     resolve={
                         'fault_position': c.get_filter_value_from_description('fault_position', 'normal'),
-                        'sampling_rate': c.get_filter_value_from_description('sampling_rate', 48000),
+                        'sampling_rate': c.get_filter_value_from_description('sampling_rate', '48k'),
                     }
                 )
             },
@@ -587,7 +581,7 @@ class TestCollectionCWRURegression:
                     fixed={'fault_size': 0},
                     resolve={
                         'fault_position': c.get_filter_value_from_description('fault_position', 'normal'),
-                        'sampling_rate': c.get_filter_value_from_description('sampling_rate', 48000),
+                        'sampling_rate': c.get_filter_value_from_description('sampling_rate', '48k'),
                     }
                 )
             },
@@ -620,7 +614,7 @@ class TestCollectionPaderbornRegression:
 
     def test_basic_properties(self):
         from collection import DatasetCollection
-        c = DatasetCollection('configs/paderborn.yaml')
+        c = DatasetCollection('configs/collections/paderborn.yaml')
         assert c.name == 'paderborn'
         assert len(c.files) == 116
         assert sorted(c.schema.keys()) == [
@@ -631,7 +625,7 @@ class TestCollectionPaderbornRegression:
 
     def test_filter_values(self):
         from collection import DatasetCollection
-        c = DatasetCollection('configs/paderborn.yaml')
+        c = DatasetCollection('configs/collections/paderborn.yaml')
         assert c.get_filter_value_from_description('fault_element', 'normal') == 0
         assert c.get_filter_value_from_description('fault_element', 'inner ring') == 1
         assert c.get_filter_value_from_description('fault_element', 'outer ring') == 2

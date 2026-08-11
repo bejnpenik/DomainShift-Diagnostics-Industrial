@@ -273,3 +273,56 @@ class TestResolveMetadataValueLogic:
         meta = Metadata({"label": {"value": "C1"}})
         with pytest.raises((ValueError, TypeError)):
             self._resolve("label", meta)
+
+
+# =====================================================================
+# DomainDataset._load_conditioning shape validation
+# =====================================================================
+
+class TestLoadConditioningShapeValidation:
+    """A conditioning channel that segments to a different window count than
+    the primary channel must raise a clear error, not an opaque torch.cat
+    failure or a silent misalignment."""
+
+    class _FakeProcessor:
+        name = "fake"
+
+        def __init__(self, seg_shape):
+            self._seg_shape = seg_shape
+
+        def segment_raw(self, signal, sampling_rate):
+            return torch.zeros(*self._seg_shape)
+
+    def _make_dataset(self, seg_shape):
+        from unittest.mock import MagicMock
+        from experiment.dataset import DomainDataset
+
+        collection = MagicMock()
+        collection.channels = {
+            "vibration": SignalChannelConfig(reader_channel="vibration", sampling_rate=12000),
+            "rpm": SignalChannelConfig(reader_channel="rpm", sampling_rate=1000),
+        }
+        pipeline = PipelineConfig(
+            primary="vibration",
+            conditioning=[ConditioningSource(channel="rpm", reduce="mean")],
+        )
+        return DomainDataset(
+            collection=collection,
+            file_sampler=MagicMock(),
+            reader=MagicMock(),
+            sample_processor=self._FakeProcessor(seg_shape),
+            pipeline=pipeline,
+        )
+
+    def test_mismatched_window_count_raises(self):
+        dataset = self._make_dataset(seg_shape=(3, 5))  # 3 windows
+        raw = {"vibration": object(), "rpm": object()}
+        with pytest.raises(ValueError, match="produced 3 windows"):
+            dataset._load_conditioning(raw, metadata={}, n_windows=8)
+
+    def test_matching_window_count_succeeds(self):
+        dataset = self._make_dataset(seg_shape=(8, 5))  # matches n_windows
+        raw = {"vibration": object(), "rpm": object()}
+        cond = dataset._load_conditioning(raw, metadata={}, n_windows=8)
+        assert cond is not None
+        assert cond.shape[0] == 8

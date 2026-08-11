@@ -360,6 +360,21 @@ class TestDomainGeneralizationTrainer:
         with pytest.raises(ValueError, match="≥ 2 source domains"):
             trainer.fit(model, domains, val)
 
+    def test_undersized_domain_raises_instead_of_hanging(self):
+        """A domain smaller than batch_size must raise, not hang.
+
+        Per-domain loaders use drop_last=True, so an undersized domain yields
+        zero batches and _cycling_loader would otherwise spin forever.
+        """
+        from training.dg_trainer import DomainGeneralizationTrainer
+        domains = _multi_source(n_domains=3, n=40)
+        domains[1] = (domains[1][0][:8], domains[1][1][:8])  # domain 1: 8 < batch_size=32
+        val = (torch.randn(8, 1, 16), torch.randint(0, 3, (8,)))
+        model = _TinyModel()
+        trainer = DomainGeneralizationTrainer(_trainer_cfg(max_epochs=2), _adap_cfg(), "mixup")
+        with pytest.raises(ValueError, match="fewer than batch_size"):
+            trainer.fit(model, domains, val)
+
 
 # =====================================================================
 # TestBackwardCompatibility
