@@ -141,6 +141,63 @@ filters:
     fault_size: [S0, S28] # aliases resolved before generating combinations
 ```
 
+### Model YAML (`configs/models/`)
+
+Defines an encoder → aggregator → head architecture. `type` is `1d` or `2d`; the
+same layer names work for both, dispatching to 1D or 2D modules internally.
+
+```yaml
+name: cnn1d_small
+type: 1d
+
+encoder:
+  - [conv, 1, 2, {k: 7, s: 1}]
+  - [pool, {k: 2, s: 2}]
+  - [dropout, 0.1]
+  - [res, 2, 4, {k: 5, s: 1, blocks: 1, act: relu}]
+  - [se, {r: 2}]
+  - [pool, {k: 2, s: 2}]
+
+aggregator:
+  type: adaptive        # adaptive | multihead
+  levels: 16             # int for adaptive, [fine, balanced, coarse] for multihead
+
+head:
+  depth: 2
+  dropout: 0.1
+  act: relu
+```
+
+Encoder layer types:
+
+| Layer     | Spec                                              | Notes |
+|-----------|----------------------------------------------------|-------|
+| `conv`    | `[conv, in_ch, out_ch, {k, s, p, d, g, act, bn}]`  | Plain conv; `bn` defaults to `False`. |
+| `pool`    | `[pool, {k, s, p, d, maxpool}]`                    | Max- or avg-pool. |
+| `dropout` | `[dropout, prob]`                                  | |
+| `res`     | `[res, in_ch, out_ch, {k, s, blocks, act}]`        | Residual block (see below). |
+| `se`      | `[se, {r}]`                                        | Squeeze-and-Excitation. Must follow a `conv` or `res` layer. |
+| `eca`     | `[eca, {k}]`                                       | Efficient Channel Attention. Must follow a `conv` or `res` layer. |
+| `cbam`    | `[cbam, {r, spatial_k}]`                           | Channel + spatial attention. Must follow a `conv` or `res` layer. |
+
+`res` requires odd `k` (checked per axis for 2D tuples): with `p = k//2`, the
+main path's stride-`s` conv and the strided 1×1 shortcut always produce
+identical output shapes, so the residual addition is shape-safe at any
+stride. BatchNorm is always enabled inside `res` blocks — unlike `conv`'s
+`bn=False` default — since residual stacks train unstably without it.
+`blocks: n` stacks `n` units: the first is `in_ch → out_ch` at stride `s`,
+the rest are `out_ch → out_ch` at stride 1.
+
+`se` and `cbam` clamp their hidden channel width to `max(1, channels // r)`,
+so they stay valid even on encoders with as few as 2 channels. `eca` and
+`cbam`'s `spatial_k` must be odd; `eca` is near parameter-free (its conv has
+exactly `k` weights, no bias).
+
+Attention layers (`se`/`eca`/`cbam`) receive the current encoder channel
+count automatically — the YAML never repeats it — and must appear somewhere
+after a `conv` or `res` layer (not necessarily immediately after;
+`pool`/`dropout` layers in between are fine).
+
 ### Study YAML (`configs/study/`)
 
 Defines the experiment grid: which models, processors, and training hyperparameters to vary.

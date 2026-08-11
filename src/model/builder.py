@@ -12,7 +12,10 @@ YAML format:
       - [conv, 1, 2, {k: 7, s: 1}]
       - [pool, {k: 2, s: 2}]
       - [dropout, 0.1]
-      - [conv, 2, 4, {k: 5, s: 1}]
+      - [res, 2, 4, {k: 5, s: 1, blocks: 1, act: relu}]
+      - [se, {r: 2}]
+      - [eca, {k: 3}]
+      - [cbam, {r: 2, spatial_k: 7}]
       - [pool, {k: 2, s: 2}]
 
     aggregator:
@@ -23,6 +26,33 @@ YAML format:
       depth: 2
       dropout: 0.1
       act: relu
+
+Encoder layer types:
+    conv    [conv, in_ch, out_ch, {k, s, p, d, g, act, bn}]  -- plain conv, bn defaults False
+    pool    [pool, {k, s, p, d, maxpool}]
+    dropout [dropout, prob]
+    res     [res, in_ch, out_ch, {k, s, blocks, act}]  -- residual block, see below
+    se      [se, {r}]      -- Squeeze-and-Excitation, must follow a conv or res layer
+    eca     [eca, {k}]     -- Efficient Channel Attention, must follow a conv or res layer
+    cbam    [cbam, {r, spatial_k}]  -- channel + spatial attention, must follow a conv or res layer
+
+res: odd k required (per axis for 2D tuples) -- with p=k//2, the main path's
+stride-s conv and the strided 1x1 shortcut always produce identical output
+shapes, so the residual addition is shape-safe at any stride. BatchNorm is
+always enabled inside res blocks (unlike conv's bn=False default), since
+residual stacks train unstably without it. blocks=n stacks n units: the
+first is in_ch->out_ch at stride s, the rest are out_ch->out_ch at stride 1.
+
+se/cbam: hidden channel width is max(1, channels // r) -- always at least 1,
+so these are safe even on encoders with as few as 2 channels.
+
+eca/cbam spatial_k: odd required; eca is near parameter-free (its conv has
+exactly k weights, no bias).
+
+Attention layers (se/eca/cbam) receive the current encoder channel count
+from the builder -- the YAML never repeats it -- and must appear after at
+least one conv or res layer in the encoder (not necessarily immediately
+before/after -- pool/dropout layers in between are fine).
 """
 
 from __future__ import annotations
