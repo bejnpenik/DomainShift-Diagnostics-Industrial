@@ -257,6 +257,62 @@ class ECA2D(nn.Module):
         return x * s
 
 
+class CBAM1D(nn.Module):
+    def __init__(self, channels:int, r:int=2, spatial_k:int=7):
+        super().__init__()
+        _require_odd(spatial_k, "CBAM1D", "spatial_k")
+        hidden = max(1, channels // r)
+        self._avg_pool = nn.AdaptiveAvgPool1d(1)
+        self._max_pool = nn.AdaptiveMaxPool1d(1)
+        self._fc1 = nn.Linear(channels, hidden)
+        self._act = nn.ReLU()
+        self._fc2 = nn.Linear(hidden, channels)
+        self._channel_gate = nn.Sigmoid()
+        self._spatial_conv = nn.Conv1d(2, 1, spatial_k, padding=spatial_k // 2, bias=False)
+        self._spatial_gate = nn.Sigmoid()
+
+    def _channel_mlp(self, x:torch.Tensor)->torch.Tensor:
+        return self._fc2(self._act(self._fc1(x)))
+
+    def forward(self, x:torch.Tensor)->torch.Tensor:
+        b, c, _ = x.shape
+        avg = self._channel_mlp(self._avg_pool(x).view(b, c))
+        mx = self._channel_mlp(self._max_pool(x).view(b, c))
+        x = x * self._channel_gate(avg + mx).view(b, c, 1)
+        avg_map = x.mean(dim=1, keepdim=True)
+        max_map = x.amax(dim=1, keepdim=True)
+        s = self._spatial_gate(self._spatial_conv(torch.cat([avg_map, max_map], dim=1)))
+        return x * s
+
+
+class CBAM2D(nn.Module):
+    def __init__(self, channels:int, r:int=2, spatial_k:int=7):
+        super().__init__()
+        _require_odd(spatial_k, "CBAM2D", "spatial_k")
+        hidden = max(1, channels // r)
+        self._avg_pool = nn.AdaptiveAvgPool2d(1)
+        self._max_pool = nn.AdaptiveMaxPool2d(1)
+        self._fc1 = nn.Linear(channels, hidden)
+        self._act = nn.ReLU()
+        self._fc2 = nn.Linear(hidden, channels)
+        self._channel_gate = nn.Sigmoid()
+        self._spatial_conv = nn.Conv2d(2, 1, spatial_k, padding=spatial_k // 2, bias=False)
+        self._spatial_gate = nn.Sigmoid()
+
+    def _channel_mlp(self, x:torch.Tensor)->torch.Tensor:
+        return self._fc2(self._act(self._fc1(x)))
+
+    def forward(self, x:torch.Tensor)->torch.Tensor:
+        b, c, _, _ = x.shape
+        avg = self._channel_mlp(self._avg_pool(x).view(b, c))
+        mx = self._channel_mlp(self._max_pool(x).view(b, c))
+        x = x * self._channel_gate(avg + mx).view(b, c, 1, 1)
+        avg_map = x.mean(dim=1, keepdim=True)
+        max_map = x.amax(dim=1, keepdim=True)
+        s = self._spatial_gate(self._spatial_conv(torch.cat([avg_map, max_map], dim=1)))
+        return x * s
+
+
 
 
 if __name__ == '__main__':

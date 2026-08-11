@@ -41,6 +41,7 @@ from .modules import (
     MultiHeadPool1D, MultiHeadPool2D,
     ResBlock1D, ResBlock2D,
     SE1D, SE2D, ECA1D, ECA2D,
+    CBAM1D, CBAM2D,
     MLP,
 )
 
@@ -58,6 +59,7 @@ _MODULE_MAP = {
         "res": ResBlock1D,
         "se": SE1D,
         "eca": ECA1D,
+        "cbam": CBAM1D,
     },
     "2d": {
         "conv": Conv2D,
@@ -68,6 +70,7 @@ _MODULE_MAP = {
         "res": ResBlock2D,
         "se": SE2D,
         "eca": ECA2D,
+        "cbam": CBAM2D,
     },
 }
 
@@ -152,7 +155,7 @@ def _build_encoder(layers: list[list], dim_type: str) -> tuple[nn.Sequential, in
             ))
             output_channels = out_ch
 
-        elif layer_type in ("se", "eca"):
+        elif layer_type in ("se", "eca", "cbam"):
             if output_channels == 0:
                 raise ValueError(f"'{layer_type}' must follow a conv or res layer")
             params = spec[1] if len(spec) > 1 else {}

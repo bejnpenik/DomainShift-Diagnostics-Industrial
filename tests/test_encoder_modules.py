@@ -19,6 +19,7 @@ from model.builder import build_model, build_model_from_yaml, BuiltModel
 from model.modules import (
     ResBlock1D, ResBlock2D,
     SE1D, SE2D, ECA1D, ECA2D,
+    CBAM1D, CBAM2D,
 )
 
 _CONFIGS_DIR = Path(__file__).resolve().parent.parent / "configs" / "models"
@@ -326,6 +327,7 @@ _NEW_CONFIGS_1D = [
     "cnn1d_se.yaml",
     "cnn1d_eca.yaml",
     "cnn1d_res_se.yaml",
+    "cnn1d_cbam.yaml",
 ]
 
 _NEW_CONFIGS_2D = [
@@ -333,6 +335,7 @@ _NEW_CONFIGS_2D = [
     "cnn2d_se.yaml",
     "cnn2d_eca.yaml",
     "cnn2d_res_se.yaml",
+    "cnn2d_cbam.yaml",
 ]
 
 
@@ -356,3 +359,78 @@ class TestNewYAMLConfigs2D:
         assert out.shape == (4, 4)
         out.sum().backward()
         assert any(p.grad is not None and torch.any(p.grad != 0) for p in model.parameters())
+
+
+# =====================================================================
+# CBAM1D / CBAM2D
+# =====================================================================
+
+class TestCBAM1D:
+    def test_hidden_clamped_to_one(self):
+        cbam = CBAM1D(channels=2, r=4, spatial_k=3)
+        assert cbam._fc1.out_features == 1
+
+    def test_output_shape_matches_input(self):
+        cbam = CBAM1D(channels=8, r=2, spatial_k=7)
+        x = torch.randn(3, 8, 40)
+        out = cbam(x)
+        assert out.shape == x.shape
+
+    def test_even_spatial_k_raises(self):
+        with pytest.raises(ValueError, match="odd"):
+            CBAM1D(channels=8, spatial_k=4)
+
+    def test_gradient_flow(self):
+        cbam = CBAM1D(channels=8, r=2, spatial_k=7)
+        x = torch.randn(3, 8, 40, requires_grad=True)
+        out = cbam(x)
+        out.sum().backward()
+        assert x.grad is not None
+        assert torch.any(x.grad != 0)
+
+
+class TestCBAM2D:
+    def test_hidden_clamped_to_one(self):
+        cbam = CBAM2D(channels=2, r=4, spatial_k=3)
+        assert cbam._fc1.out_features == 1
+
+    def test_output_shape_matches_input(self):
+        cbam = CBAM2D(channels=8, r=2, spatial_k=7)
+        x = torch.randn(3, 8, 10, 10)
+        out = cbam(x)
+        assert out.shape == x.shape
+
+    def test_even_spatial_k_raises(self):
+        with pytest.raises(ValueError, match="odd"):
+            CBAM2D(channels=8, spatial_k=4)
+
+    def test_gradient_flow(self):
+        cbam = CBAM2D(channels=8, r=2, spatial_k=7)
+        x = torch.randn(3, 8, 10, 10, requires_grad=True)
+        out = cbam(x)
+        out.sum().backward()
+        assert x.grad is not None
+        assert torch.any(x.grad != 0)
+
+
+class TestBuilderCBAM:
+    def test_cbam_without_preceding_conv_raises(self):
+        cfg = {
+            "type": "1d",
+            "encoder": [["cbam", {"r": 2, "spatial_k": 7}]],
+        }
+        with pytest.raises(ValueError, match="must follow a conv or res"):
+            build_model(cfg, num_classes=3)
+
+    def test_cbam_after_res(self):
+        cfg = {
+            "type": "1d",
+            "encoder": [
+                ["res", 1, 4, {"k": 3, "s": 1}],
+                ["cbam", {"r": 2, "spatial_k": 7}],
+            ],
+            "aggregator": {"type": "adaptive", "levels": 1},
+        }
+        model = build_model(cfg, num_classes=3)
+        out = model(torch.randn(2, 1, 64))
+        assert out.shape == (2, 3)
