@@ -100,7 +100,161 @@ class MLP(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.m(x)
-    
+
+
+def _require_odd(value: int | tuple, owner: str, param: str = "k") -> None:
+    values = value if isinstance(value, tuple) else (value,)
+    if any(v % 2 == 0 for v in values):
+        raise ValueError(f"{owner} requires odd {param} (per-axis for tuples), got {param}={value}")
+
+
+def _half(k: int | tuple) -> int | tuple:
+    return tuple(v // 2 for v in k) if isinstance(k, tuple) else k // 2
+
+
+def _is_unit_stride(s: int | tuple) -> bool:
+    return all(v == 1 for v in s) if isinstance(s, tuple) else s == 1
+
+
+class _ResUnit1D(nn.Module):
+    def __init__(self, input:int, output:int, k:int, s:int, act:nn.Module):
+        super().__init__()
+        p = _half(k)
+        self._conv1 = Conv1D(input, output, k, s, p, act=act, bn=True)
+        self._conv2 = Conv1D(output, output, k, 1, p, act=nn.Identity(), bn=True)
+        self._act = act
+        if input == output and _is_unit_stride(s):
+            self._shortcut = nn.Identity()
+        else:
+            self._shortcut = Conv1D(input, output, 1, s, 0, act=nn.Identity(), bn=True)
+
+    def forward(self, x:torch.Tensor)->torch.Tensor:
+        return self._act(self._conv2(self._conv1(x)) + self._shortcut(x))
+
+
+class ResBlock1D(nn.Module):
+    """Post-activation ResNet-v1 style residual block.
+
+    With p=k//2 and odd k, a stride-s conv's output length is
+    floor((L-1)/s)+1 -- identical to the stride-s 1x1 shortcut conv's
+    output length -- so the main path and shortcut are always
+    shape-compatible for addition, at any stride. BatchNorm is always
+    enabled inside residual blocks (unlike Conv1D's bn=False default)
+    because residual stacks train unstably without normalizing the
+    pre-addition branches.
+    """
+    def __init__(self, input:int, output:int, k:int=3, s:int=1, blocks:int=1, act:nn.Module=nn.ReLU()):
+        super().__init__()
+        _require_odd(k, "ResBlock1D")
+        self._blocks = nn.ModuleList([_ResUnit1D(input, output, k, s, act)])
+        for _ in range(blocks - 1):
+            self._blocks.append(_ResUnit1D(output, output, k, 1, act))
+
+    def forward(self, x:torch.Tensor)->torch.Tensor:
+        for block in self._blocks:
+            x = block(x)
+        return x
+
+
+class _ResUnit2D(nn.Module):
+    def __init__(self, input:int, output:int, k:int|tuple, s:int|tuple, act:nn.Module):
+        super().__init__()
+        p = _half(k)
+        self._conv1 = Conv2D(input, output, k, s, p, act=act, bn=True)
+        self._conv2 = Conv2D(output, output, k, 1, p, act=nn.Identity(), bn=True)
+        self._act = act
+        if input == output and _is_unit_stride(s):
+            self._shortcut = nn.Identity()
+        else:
+            self._shortcut = Conv2D(input, output, 1, s, 0, act=nn.Identity(), bn=True)
+
+    def forward(self, x:torch.Tensor)->torch.Tensor:
+        return self._act(self._conv2(self._conv1(x)) + self._shortcut(x))
+
+
+class ResBlock2D(nn.Module):
+    """Post-activation ResNet-v1 style residual block (2D).
+
+    Same shape-safety identity as ResBlock1D, applied per spatial axis
+    independently: with p=k//2 and odd k (checked per axis for tuples),
+    the main path and the strided 1x1 shortcut produce identical H and
+    W for any stride, since nn.Conv2d computes each output dimension
+    with the same 1D formula independently. BatchNorm is always
+    enabled inside residual blocks (unlike Conv2D's bn=False default)
+    because residual stacks train unstably without normalizing the
+    pre-addition branches.
+    """
+    def __init__(self, input:int, output:int, k:int|tuple=3, s:int|tuple=1, blocks:int=1, act:nn.Module=nn.ReLU()):
+        super().__init__()
+        _require_odd(k, "ResBlock2D")
+        self._blocks = nn.ModuleList([_ResUnit2D(input, output, k, s, act)])
+        for _ in range(blocks - 1):
+            self._blocks.append(_ResUnit2D(output, output, k, 1, act))
+
+    def forward(self, x:torch.Tensor)->torch.Tensor:
+        for block in self._blocks:
+            x = block(x)
+        return x
+
+
+class SE1D(nn.Module):
+    def __init__(self, channels:int, r:int=2):
+        super().__init__()
+        hidden = max(1, channels // r)
+        self._pool = nn.AdaptiveAvgPool1d(1)
+        self._fc1 = nn.Linear(channels, hidden)
+        self._act = nn.ReLU()
+        self._fc2 = nn.Linear(hidden, channels)
+        self._gate = nn.Sigmoid()
+
+    def forward(self, x:torch.Tensor)->torch.Tensor:
+        b, c, _ = x.shape
+        s = self._gate(self._fc2(self._act(self._fc1(self._pool(x).view(b, c)))))
+        return x * s.view(b, c, 1)
+
+
+class SE2D(nn.Module):
+    def __init__(self, channels:int, r:int=2):
+        super().__init__()
+        hidden = max(1, channels // r)
+        self._pool = nn.AdaptiveAvgPool2d(1)
+        self._fc1 = nn.Linear(channels, hidden)
+        self._act = nn.ReLU()
+        self._fc2 = nn.Linear(hidden, channels)
+        self._gate = nn.Sigmoid()
+
+    def forward(self, x:torch.Tensor)->torch.Tensor:
+        b, c, _, _ = x.shape
+        s = self._gate(self._fc2(self._act(self._fc1(self._pool(x).view(b, c)))))
+        return x * s.view(b, c, 1, 1)
+
+
+class ECA1D(nn.Module):
+    def __init__(self, channels:int, k:int=3):
+        super().__init__()
+        _require_odd(k, "ECA1D")
+        self._pool = nn.AdaptiveAvgPool1d(1)
+        self._conv = nn.Conv1d(1, 1, k, padding=k // 2, bias=False)
+        self._gate = nn.Sigmoid()
+
+    def forward(self, x:torch.Tensor)->torch.Tensor:
+        b, c, _ = x.shape
+        s = self._gate(self._conv(self._pool(x).view(b, 1, c))).view(b, c, 1)
+        return x * s
+
+
+class ECA2D(nn.Module):
+    def __init__(self, channels:int, k:int=3):
+        super().__init__()
+        _require_odd(k, "ECA2D")
+        self._pool = nn.AdaptiveAvgPool2d(1)
+        self._conv = nn.Conv1d(1, 1, k, padding=k // 2, bias=False)
+        self._gate = nn.Sigmoid()
+
+    def forward(self, x:torch.Tensor)->torch.Tensor:
+        b, c, _, _ = x.shape
+        s = self._gate(self._conv(self._pool(x).view(b, 1, c))).view(b, c, 1, 1)
+        return x * s
 
 
 
