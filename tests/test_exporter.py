@@ -57,3 +57,33 @@ class TestResultsExporter:
             header = path.read_text().strip().split("\n")[0]
             for col in ["accuracy", "seed", "train_dataset", "test_dataset"]:
                 assert col in header, f"Missing column: {col}"
+
+
+class TestCollectionQualifiedLabels:
+    """Collection-qualified labels ("cwru:label") must survive the exporter
+    unchanged. RowGenerator/CSVExporter treat train_dataset_name and
+    confusion-matrix keys as opaque strings everywhere -- this confirms
+    that (no parsing/splitting to break), rather than fixing anything."""
+
+    def test_qualified_labels_survive_csv_round_trip(self):
+        import csv
+
+        cm = np.array([[9, 1], [2, 8]])
+        train_label = "cwru:fault_element-pooled"
+        test_label = "paderborn:fault_element-fault_size=1"
+        ds = DomainSolution(
+            train_label, {0: "h", 1: "f"}, 42, {},
+            {train_label: cm, test_label: cm},
+        )
+        mds = MultiDomainSolution("cfg1", [ds], processor_name="raw_12k")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "results.csv"
+            exporter = ResultsExporter()
+            exporter.export_multi_domain(mds, path, "transfer_study")
+
+            with open(path, newline="") as f:
+                rows = list(csv.DictReader(f))
+
+        assert {r["train_dataset"] for r in rows} == {train_label}
+        assert {r["test_dataset"] for r in rows} == {train_label, test_label}
