@@ -1,0 +1,71 @@
+# Cross-collection transfer: train on one collection, evaluate on the other
+# (source==target self-eval included as the in-collection reference point).
+#
+# The shared label space (class_aliases below) is the INTERSECTION of the
+# two collections' classes: CWRU has a 4th "ball" class Paderborn lacks.
+# There is no task-YAML mechanism to exclude a class (construct_dataset_plan
+# always iterates the collection's full target header) -- restriction to
+# {NR, IR, OR} happens at the DatasetPlan level, in the transfer runtime
+# (experiment.transfer.restrict_to_classes), before any file is loaded. The
+# 4-class space returns once a collection with ball-equivalent faults
+# (HUST/Ottawa/SCA) joins. collections: below reference the ORIGINAL task
+# YAMLs unmodified -- "ball" is still constructed internally by
+# construct_dataset_plan, then dropped by the transfer runtime.
+#
+# lr/optimizer_name are fixed at cwru_study.yaml's adamw branch (lr=0.001)
+# so transfer results stay comparable with the single-collection studies.
+
+name: cwru_pu_transfer
+type: transfer
+
+collections:
+  cwru:
+    collection: configs/collections/cwru.yaml
+    task: configs/tasks/cwru_fault_element.yaml
+  paderborn:
+    collection: configs/collections/paderborn.yaml
+    task: configs/tasks/paderborn_fault_element.yaml
+
+class_aliases: [IR, NR, OR]
+
+sources:
+  - {collection: cwru, filters: pooled}
+  - {collection: paderborn, filters: pooled}
+
+targets: all   # every source model evaluated on every collection's pooled plan
+
+seeds: [11, 32, 52]
+
+grid:
+  factors:
+    model_type: [1d]
+    model_variant: [1x1, res, se, eca]
+    normalization: [sample]
+
+  independent:
+    # processor is FIXED for the whole study -- single shared processor is
+    # a transfer-study invariant, enforced by the builder (it must not
+    # appear in grid.factors or grid.dependent).
+    processor: configs/processors/raw_12k.yaml
+    pipeline: {primary: vibration}
+    file_sampling: {max_files_per_code: 3}
+    train_val_split_ratio: 0.33
+    max_epochs: 3000
+    weight_decay: 0.0001
+    momentum: 0.9
+    optimizer_name: adamw
+    lr: 0.001
+    early_stopping: [10, 0.001]
+    noise: [0.1, 0.1]
+    device: cuda
+    verbose_level: 100
+
+  dependent:
+    model:
+      depends_on: [model_type, model_variant]
+      mapping:
+        1d:
+          1x1: configs/models/cnn1d_1x1.yaml
+          res: configs/models/cnn1d_res.yaml
+          se: configs/models/cnn1d_se.yaml
+          eca: configs/models/cnn1d_eca.yaml

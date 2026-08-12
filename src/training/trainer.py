@@ -120,6 +120,21 @@ class Trainer:
             correct = out.max(1)[1].eq(y).sum().item()
         return loss.item(), 100 * correct / y.size(0)
 
+    def _make_criterion(self, y_train: torch.Tensor, y_val: torch.Tensor) -> nn.Module:
+        cfg = self._config
+        if cfg.class_weighting == "none":
+            return nn.CrossEntropyLoss()
+        if cfg.class_weighting == "balanced":
+            # num_classes uses train+val labels together, only to learn how
+            # many classes exist (in case one is entirely absent from the
+            # train split). The WEIGHTS themselves come from y_train alone --
+            # val never influences the loss weighting, only this count.
+            num_classes = int(torch.cat([y_train, y_val]).max().item()) + 1
+            counts = torch.bincount(y_train, minlength=num_classes).float().clamp(min=1)
+            weights = (y_train.shape[0] / (num_classes * counts)).to(cfg.device)
+            return nn.CrossEntropyLoss(weight=weights)
+        raise ValueError(f"Unknown class_weighting: {cfg.class_weighting!r}")
+
     def fit(
         self,
         model: nn.Module,
@@ -139,7 +154,7 @@ class Trainer:
         cfg = self._config
         model = model.to(cfg.device)
         optimizer = self._create_optimizer(model.parameters())
-        criterion = nn.CrossEntropyLoss()
+        criterion = self._make_criterion(train_data[1], val_data[1])
         stopper = EarlyStopper(*cfg.early_stopping) if cfg.early_stopping else None
 
         aux_train = train_data[2] if len(train_data) > 2 else None

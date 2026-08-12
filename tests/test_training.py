@@ -408,3 +408,85 @@ class TestTrainer:
             return Trainer(cfg).fit(model, train_data, val_data).train_loss
 
         assert _run() == _run()
+
+
+# =====================================================================
+# class_weighting regression pin -- written and verified against today's
+# Trainer.fit BEFORE the class_weighting field/criterion-construction
+# change (Phase 5, Adjustment 4 / Pin 6b)
+# =====================================================================
+
+class TestTrainerClassWeightingRegression:
+    def test_default_matches_unweighted_cross_entropy_exactly(self):
+        """Trainer._validate() does ONE full-batch forward+loss call over
+        val_data (no DataLoader, no per-batch averaging) -- so an
+        independent nn.CrossEntropyLoss() recomputation on the
+        post-training model is an EXACT comparison, not an approximation.
+        This must keep passing, unchanged, once class_weighting exists and
+        defaults to 'none'."""
+        cfg = TrainerConfig(max_epochs=1, device="cpu", early_stopping=None, noise=None, verbose_level=0)
+        trainer = Trainer(cfg)
+        model = nn.Sequential(nn.Flatten(), nn.Linear(600, 3))
+        train_data = _make_data(50, 600, 3)
+        val_data = _make_data(20, 600, 3)
+
+        result = trainer.fit(model, train_data, val_data)
+
+        trained_model = result.model
+        trained_model.eval()
+        with torch.no_grad():
+            expected_val_loss = nn.CrossEntropyLoss()(trained_model(val_data[0]), val_data[1]).item()
+
+        assert result.val_loss == pytest.approx(expected_val_loss, abs=1e-6)
+
+    def test_none_never_passes_a_weight_to_cross_entropy(self):
+        from unittest.mock import patch
+
+        captured = []
+        real_init = nn.CrossEntropyLoss.__init__
+
+        def spy_init(self, *args, **kwargs):
+            captured.append(kwargs.get("weight"))
+            return real_init(self, *args, **kwargs)
+
+        cfg = TrainerConfig(max_epochs=1, device="cpu", early_stopping=None, noise=None, verbose_level=0)
+        model = nn.Sequential(nn.Flatten(), nn.Linear(600, 3))
+        train_data = _make_data(50, 600, 3)
+        val_data = _make_data(20, 600, 3)
+
+        with patch.object(nn.CrossEntropyLoss, "__init__", spy_init):
+            Trainer(cfg).fit(model, train_data, val_data)
+
+        assert captured == [None]
+
+    def test_balanced_on_synthetic_9_to_1_dataset_produces_expected_weight_ratio(self):
+        from unittest.mock import patch
+
+        # train is 9:1 imbalanced; val is deliberately 1:1 -- the captured
+        # ratio must reflect TRAIN's imbalance only, never val's.
+        Y_train = torch.cat([torch.zeros(900, dtype=torch.long), torch.ones(100, dtype=torch.long)])
+        X_train = torch.randn(1000, 1, 600)
+        Y_val = torch.cat([torch.zeros(10, dtype=torch.long), torch.ones(10, dtype=torch.long)])
+        X_val = torch.randn(20, 1, 600)
+
+        cfg = TrainerConfig(
+            max_epochs=1, device="cpu", early_stopping=None, noise=None, verbose_level=0,
+            class_weighting="balanced",
+        )
+        model = nn.Sequential(nn.Flatten(), nn.Linear(600, 2))
+
+        captured = []
+        real_init = nn.CrossEntropyLoss.__init__
+
+        def spy_init(self, *args, **kwargs):
+            captured.append(kwargs.get("weight"))
+            return real_init(self, *args, **kwargs)
+
+        with patch.object(nn.CrossEntropyLoss, "__init__", spy_init):
+            Trainer(cfg).fit(model, (X_train, Y_train), (X_val, Y_val))
+
+        assert len(captured) == 1
+        weight = captured[0]
+        assert weight is not None
+        ratio = (weight[1] / weight[0]).item()
+        assert ratio == pytest.approx(9.0, abs=1e-4)

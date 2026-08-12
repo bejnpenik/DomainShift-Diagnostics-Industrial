@@ -20,6 +20,12 @@ class TrainerConfig(BaseModel):
     # None  → full-batch (data moved to GPU once, one gradient step per epoch)
     # int   → mini-batch via DataLoader (data stays on CPU, shuffled each epoch)
     random_seed: int = 42
+    # "none"     → nn.CrossEntropyLoss() (default, unweighted, unchanged behavior)
+    # "balanced" → inverse-class-frequency weights computed from the training
+    #              split at fit() time (N / (num_classes * count[c])) -- correct
+    #              automatically for restricted/pooled/multi-source-merged data,
+    #              since it's derived from whatever Y_train actually is.
+    class_weighting: Literal["none", "balanced"] = "none"
 
 
 @dataclass

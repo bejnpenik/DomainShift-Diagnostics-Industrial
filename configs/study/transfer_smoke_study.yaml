@@ -1,0 +1,53 @@
+# Smoke-test variant of cwru_pu_transfer_study.yaml: 1 seed, 1 model
+# variant, 5 epochs. Meant to confirm the full transfer pipeline runs
+# end-to-end (--dry-run first, then a short real run only after explicit
+# approval) -- not to produce meaningful accuracy numbers.
+
+name: cwru_pu_transfer_smoke
+type: transfer
+
+collections:
+  cwru:
+    collection: configs/collections/cwru.yaml
+    task: configs/tasks/cwru_fault_element.yaml
+  paderborn:
+    collection: configs/collections/paderborn.yaml
+    task: configs/tasks/paderborn_fault_element.yaml
+
+class_aliases: [IR, NR, OR]
+
+sources:
+  - {collection: cwru, filters: pooled}
+  - {collection: paderborn, filters: pooled}
+
+targets: all
+
+seeds: [11]
+
+grid:
+  factors:
+    model_type: [1d]
+    model_variant: [1x1]
+    normalization: [sample]
+
+  independent:
+    processor: configs/processors/raw_12k.yaml
+    pipeline: {primary: vibration}
+    file_sampling: {max_files_per_code: 3}
+    train_val_split_ratio: 0.33
+    max_epochs: 5
+    weight_decay: 0.0001
+    momentum: 0.9
+    optimizer_name: adamw
+    lr: 0.001
+    early_stopping: [10, 0.001]
+    noise: [0.1, 0.1]
+    device: cuda
+    verbose_level: 100
+
+  dependent:
+    model:
+      depends_on: [model_type, model_variant]
+      mapping:
+        1d:
+          1x1: configs/models/cnn1d_1x1.yaml

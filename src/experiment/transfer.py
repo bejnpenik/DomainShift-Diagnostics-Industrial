@@ -23,7 +23,7 @@ from training import Trainer
 
 from .config import ExperimentConfig
 from .experiment import Experiment, ExperimentTrainResult, set_seed, split_and_normalize
-from .validation import resolve_class_aliases_to_names
+from .validation import resolve_class_aliases_to_names, validate_transfer_setup, TransferValidationReport
 from results import DomainSolution, MultiDomainSolution
 
 
@@ -377,3 +377,29 @@ class TransferExperiment:
             cls_labels=cls_labels_ref,
             dataset_label=combined_label,
         )
+
+
+def validate_transfer_study_setup(
+    collections: dict[str, tuple[DatasetCollection, BaseFileReader]],
+    class_aliases: tuple[str, ...],
+    target: str,
+    config: ExperimentConfig,
+    source_specs: tuple[TransferSpec, ...],
+) -> TransferValidationReport:
+    """Build probe plans per source collection through the real chokepoint
+    (construct-or-pool -> restrict), then run validate_transfer_setup.
+
+    Shared by TransferStudy.run (a fail-before-compute gate run before any
+    config/seed loop -- a name mismatch across collections must not train a
+    full model before dying at evaluation) and the --dry-run path's fast
+    first pass. Lives here, not in study/transfer_study.py, so it can reach
+    TransferExperiment._get_plan without a cross-package private import.
+    """
+    te = TransferExperiment(collections, config, class_aliases, target)
+    probe_plans = {
+        spec.collection: te._get_plan(spec.collection, spec.task, spec.filters)
+        for spec in source_specs
+    }
+    cols = {name: c for name, (c, _) in collections.items()}
+    readers = {name: r for name, (_, r) in collections.items()}
+    return validate_transfer_setup(cols, class_aliases, target, config, readers, probe_plans)

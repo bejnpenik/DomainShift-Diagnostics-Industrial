@@ -121,6 +121,28 @@ class StudyConfig:
 
 
 # =====================================================================
+# Study-type dispatch
+# =====================================================================
+
+def is_transfer_study(path: str | Path) -> bool:
+    """Whether a study YAML's top-level `type:` key is 'transfer'.
+
+    Absence of `type:` (every existing single-collection study) means
+    False -- their path through this module is completely untouched by
+    the transfer feature; this function is purely additive, used by
+    main.py to dispatch to study.transfer_builder instead. Deliberately
+    does not import study.transfer_builder itself (that module imports
+    FROM this one, for parse_study_config/_make_grid_builder reuse --
+    importing it back here would be circular).
+    """
+    import yaml
+
+    with open(path) as f:
+        raw = yaml.safe_load(f)
+    return raw.get("type", "single") == "transfer"
+
+
+# =====================================================================
 # YAML loading
 # =====================================================================
 
