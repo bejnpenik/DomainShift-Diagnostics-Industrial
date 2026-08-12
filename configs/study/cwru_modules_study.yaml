@@ -1,0 +1,78 @@
+# CWRU bearing fault element classification — model-architecture comparison
+#
+# Narrower companion to cwru_study.yaml: holds sampling_rate, normalization,
+# and optimizer/lr fixed (values below match cwru_study.yaml's first/default
+# option for each) and varies ONLY model_type x model_variant, isolating the
+# encoder-architecture comparison (plain conv vs. residual vs. attention)
+# added this session. model_variant maps to the narrow (1->2->4->8 channel)
+# family in configs/models/: plain = the existing *_1x1.yaml baseline.
+#
+# Total grid: 2 x 5 = 10 configurations
+# Total runs: 10 x 10 seeds = 100 (x domains for pairwise)
+
+name: cwru_modules_study
+collection: cwru
+task: configs/tasks/cwru_fault_element.yaml
+seeds: [11, 32, 52, 64, 97, 105, 139, 222, 345, 1023]
+
+grid:
+  factors:
+    model_type: [1d, 2d]
+    model_variant: [plain, res, se, eca, res_se]
+
+  # ---------------------------------------------------------------
+  # Independent factors — fixed across the entire grid.
+  #
+  # First block reused verbatim from cwru_study.yaml. Second block
+  # fixes the factors that vary there (sampling_rate, normalization,
+  # optimizer_name/lr) to a single representative value each, since
+  # this study only compares model architectures.
+  # ---------------------------------------------------------------
+  independent:
+    pipeline:
+      primary: vibration
+    file_sampling:
+      max_files_per_code: 3
+    train_val_split_ratio: 0.33
+    max_epochs: 3000
+    weight_decay: 0.0001
+    momentum: 0.9
+    early_stopping: [10, 0.001]
+    noise: [0.1, 0.1]
+    device: cuda
+    verbose_level: 100
+
+    sampling_rate: 12000       # fixed; varies [12000, 48000] in cwru_study.yaml
+    normalization: dataset     # fixed; varies [dataset, sample, none] in cwru_study.yaml
+    optimizer_name: adamw      # fixed; varies [adamw, sgd] in cwru_study.yaml
+    lr: 0.001                  # matches cwru_study.yaml's adamw branch
+
+  # ---------------------------------------------------------------
+  # Dependent factors — resolved from grid factor values
+  # ---------------------------------------------------------------
+  dependent:
+    model:
+      depends_on: [model_type, model_variant]
+      mapping:
+        1d:
+          plain: configs/models/cnn1d_1x1.yaml
+          res: configs/models/cnn1d_res.yaml
+          se: configs/models/cnn1d_se.yaml
+          eca: configs/models/cnn1d_eca.yaml
+          res_se: configs/models/cnn1d_res_se.yaml
+        2d:
+          plain: configs/models/cnn2d_1x1.yaml
+          res: configs/models/cnn2d_res.yaml
+          se: configs/models/cnn2d_se.yaml
+          eca: configs/models/cnn2d_eca.yaml
+          res_se: configs/models/cnn2d_res_se.yaml
+
+    processor:
+      depends_on: [model_type, sampling_rate]
+      mapping:
+        1d:
+          12000: configs/processors/raw_12k.yaml
+          48000: configs/processors/raw_48k.yaml
+        2d:
+          12000: configs/processors/spec_12k.yaml
+          48000: configs/processors/spec_48k.yaml
