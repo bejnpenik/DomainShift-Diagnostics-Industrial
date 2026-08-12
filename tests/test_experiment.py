@@ -567,6 +567,60 @@ class TestExperiment:
 
 
 # =====================================================================
+# _prepare_data_splits regression pin (written BEFORE the
+# _split_and_normalize extraction in Phase 4, to prove the refactor is
+# behavior-preserving: same split indices for the same seed)
+# =====================================================================
+
+class TestPrepareDataSplitsRegressionForRefactor:
+    def test_split_indices_match_manual_train_test_split(self):
+        from sklearn.model_selection import train_test_split as sk_split
+        from study.pipeline import PipelineConfig
+        from collection.channels import SignalChannelConfig
+
+        config = _make_experiment_config(
+            pipeline=PipelineConfig(primary="vibration"),
+            random_seed=7,
+            train_val_split_ratio=0.3,
+        )
+        collection = MagicMock()
+        collection.channels = {
+            "vibration": SignalChannelConfig(reader_channel="vibration", sampling_rate=12000),
+        }
+        reader = MagicMock(
+            side_effect=lambda path, metadata, channels: {"vibration": np.random.randn(2000).astype(np.float32)}
+        )
+        experiment = Experiment(collection, reader, config)
+        plan = _make_plan(n_files=6, n_classes=3)
+
+        train_data, val_data, _, _ = experiment._prepare_data_splits(plan)
+        Y_train, Y_val = train_data[1], val_data[1]
+
+        # Reproduce _prepare_data_splits' own preamble exactly -- set_seed
+        # immediately before loading -- rather than relying on incidental
+        # RNG locality between the two loads. Otherwise this comparison
+        # would silently depend on whether sampling/segmentation happens to
+        # consume global RNG state between the two calls.
+        set_seed(7)
+        X_raw, Y_raw, _, _ = experiment.load_plan_arrays(plan)
+
+        # X is deliberately never compared: the mock reader is
+        # nondeterministic by design (np.random.randn per call), so two
+        # loads never produce identical X regardless of seeding. Y IS
+        # load-invariant under this config, though: every file is used (no
+        # FileSampler configured), every raw signal is the same fixed
+        # length (so segmentation always yields the same window count per
+        # file), and class iteration is always sorted(sample_groups) -- so
+        # Y's content depends only on plan structure, never on the signal's
+        # random values.
+        assert len(Y_raw) == len(Y_train) + len(Y_val)
+
+        train_idx, val_idx = sk_split(np.arange(len(Y_raw)), test_size=0.3, random_state=7)
+        assert torch.equal(Y_train, Y_raw[train_idx])
+        assert torch.equal(Y_val, Y_raw[val_idx])
+
+
+# =====================================================================
 # ExperimentRunner
 # =====================================================================
 

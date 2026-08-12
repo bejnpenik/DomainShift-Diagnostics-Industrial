@@ -19,8 +19,10 @@ import torch
 from collection import Task, DatasetCollection, DatasetPlan
 from collection.dataset_plan import SampleGroup
 from reader import BaseFileReader
+from training import Trainer
+
 from .config import ExperimentConfig
-from .experiment import Experiment
+from .experiment import Experiment, ExperimentTrainResult, set_seed, split_and_normalize
 from .validation import resolve_class_aliases_to_names
 from results import DomainSolution, MultiDomainSolution
 
@@ -296,4 +298,82 @@ class TransferExperiment:
             config_name=self._config.name,
             domain_solutions=domain_solutions,
             processor_name=self.processor_name,
+        )
+
+    def train_on_plans(self, sources: tuple[TransferSpec, ...]) -> ExperimentTrainResult:
+        """Train on data merged from multiple collections/plans.
+
+        Every source is resolved through _get_plan (construct-or-pool, then
+        restrict) exactly like run_transfer's sources -- multi-source
+        training gets the same class-alias/target guarantees, never a
+        bypass.
+
+        Mirrors _prepare_data_splits' semantics exactly, applied to the
+        concatenated raw data: one set_seed call before any loading
+        (fulfilling load_plan_arrays' documented promise that it owns no
+        seeding itself), one train/val split over the CONCATENATED data --
+        not per-source -- and the normalizer fit on the merged train split
+        only. Pinned by tests/test_experiment.py's regression test proving
+        split_and_normalize preserves _prepare_data_splits' single-plan
+        split behavior exactly.
+
+        Sources are canonicalized by qualified label (collection:plan.label)
+        BEFORE seeding/loading, so the result -- and RNG consumption order --
+        is invariant to the order callers pass `sources` in, matching what
+        the sorted-join dataset_label already implies.
+        """
+        if not sources:
+            raise ValueError("train_on_plans requires at least one source")
+
+        resolved = [(s.collection, self._get_plan(s.collection, s.task, s.filters)) for s in sources]
+        resolved.sort(key=lambda item: f"{item[0]}:{item[1].label}")
+
+        set_seed(self._config.random_seed)
+
+        all_X, all_Y, all_aux = [], [], []
+        cls_labels_ref = None
+        ref_shape = None
+        has_aux_ref = None
+        for name, plan in resolved:
+            X, Y, cls_labels, X_aux = self._experiments[name].load_plan_arrays(plan)
+            if cls_labels_ref is None:
+                cls_labels_ref = cls_labels
+                ref_shape = tuple(X.shape[1:])
+                has_aux_ref = X_aux is not None
+            else:
+                if cls_labels != cls_labels_ref:
+                    raise ValueError(
+                        f"cls_labels mismatch: source '{name}' has {cls_labels}, expected {cls_labels_ref}"
+                    )
+                if tuple(X.shape[1:]) != ref_shape:
+                    raise ValueError(
+                        f"Feature shape mismatch: source '{name}' has {tuple(X.shape[1:])}, expected {ref_shape}"
+                    )
+                if (X_aux is not None) != has_aux_ref:
+                    raise ValueError(
+                        f"Conditioning channel presence mismatch: source '{name}' "
+                        f"{'has' if X_aux is not None else 'has no'} aux data, but the "
+                        f"first source {'has' if has_aux_ref else 'has no'} -- aux "
+                        f"channels must be all-or-none across merged sources."
+                    )
+            all_X.append(X)
+            all_Y.append(Y)
+            if X_aux is not None:
+                all_aux.append(X_aux)
+
+        X = torch.cat(all_X)
+        Y = torch.cat(all_Y)
+        X_aux = torch.cat(all_aux) if all_aux else None
+
+        train_data, val_data, train_norm = split_and_normalize(X, Y, X_aux, self._config)
+
+        model = self._config.model_config.create_model(num_classes=len(cls_labels_ref))
+        train_result = Trainer(self._config.trainer_config).fit(model, train_data, val_data)
+
+        combined_label = "+".join(f"{name}:{plan.label}" for name, plan in resolved)
+        return ExperimentTrainResult(
+            train_result=train_result,
+            normalisator=train_norm,
+            cls_labels=cls_labels_ref,
+            dataset_label=combined_label,
         )

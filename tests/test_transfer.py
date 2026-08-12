@@ -33,6 +33,7 @@ from experiment.transfer import (
     _pooled_label,
 )
 from training.config import TrainerConfig, TrainResult
+from training import Trainer
 from model.config import ModelConfig
 from normalization import Normalisator
 from study.pipeline import PipelineConfig
@@ -758,3 +759,229 @@ class TestRealCollectionMetadataIntegration:
         cwru_cls_labels = {cls: i for i, cls in enumerate(sorted(cwru_plan.sample_groups))}
         pad_cls_labels = {cls: i for i, cls in enumerate(sorted(pad_plan.sample_groups))}
         assert cwru_cls_labels == pad_cls_labels
+
+
+# =====================================================================
+# Phase 4 — TransferExperiment.train_on_plans
+# =====================================================================
+
+def _make_two_source_te(config=None, cwru_n=4, paderborn_n=3, aux=False):
+    """Two collections, each with one valid plan, both restricted to
+    {normal, inner ring}. aux=True gives every source a (n, 1) conditioning
+    tensor from a patched Experiment.load_plan_arrays."""
+    cwru = _make_mock_collection(
+        "cwru", {frozenset({"fault_size": 1}.items()): _make_plan("cwru", "fault_element-fault_size=1", ["normal", "inner ring"])},
+        header=_FAULT_ELEMENT_HEADER,
+    )
+    paderborn = _make_mock_collection(
+        "paderborn", {frozenset({"fault_size": 1}.items()): _make_plan("paderborn", "fault_element-fault_size=1", ["normal", "inner ring"])},
+        header=_FAULT_ELEMENT_HEADER,
+    )
+    config = config or _make_experiment_config()
+    te = TransferExperiment(
+        {"cwru": (cwru, MagicMock()), "paderborn": (paderborn, MagicMock())},
+        config, class_aliases=("NR", "IR"), target="fault_element",
+    )
+    return te
+
+
+_TWO_SOURCE_TASK = _make_task()
+_TWO_SOURCE_SPECS = (
+    TransferSpec("cwru", _TWO_SOURCE_TASK, {"fault_size": 1}),
+    TransferSpec("paderborn", _TWO_SOURCE_TASK, {"fault_size": 1}),
+)
+_TWO_SOURCE_CLS_LABELS = {"inner ring": 0, "normal": 1}
+
+
+def _capturing_trainer_fit(capture: dict):
+    def fake_fit(self, model, train_data, val_data):
+        capture["train_data"] = train_data
+        capture["val_data"] = val_data
+        return _make_train_result()
+    return fake_fit
+
+
+class TestTrainOnPlansBasic:
+    def test_returns_experiment_train_result_with_combined_label(self):
+        te = _make_two_source_te()
+
+        def fake_load(self, plan):
+            n = 4 if self._collection.name == "cwru" else 3
+            return torch.randn(n, 1, 600), torch.zeros(n, dtype=torch.long), _TWO_SOURCE_CLS_LABELS, None
+
+        with patch.object(Experiment, "load_plan_arrays", fake_load), patch.object(Trainer, "fit", _capturing_trainer_fit({})):
+            result = te.train_on_plans(_TWO_SOURCE_SPECS)
+
+        assert isinstance(result, ExperimentTrainResult)
+        assert result.cls_labels == _TWO_SOURCE_CLS_LABELS
+        assert result.dataset_label == "cwru:fault_element-fault_size=1+paderborn:fault_element-fault_size=1"
+
+    def test_empty_sources_raises(self):
+        te = _make_two_source_te()
+        with pytest.raises(ValueError, match="at least one source"):
+            te.train_on_plans(())
+
+    def test_merged_sample_count_equals_sum_of_sources(self):
+        te = _make_two_source_te()
+
+        def fake_load(self, plan):
+            n = 4 if self._collection.name == "cwru" else 3
+            return torch.randn(n, 1, 600), torch.zeros(n, dtype=torch.long), _TWO_SOURCE_CLS_LABELS, None
+
+        capture = {}
+        with patch.object(Experiment, "load_plan_arrays", fake_load), patch.object(Trainer, "fit", _capturing_trainer_fit(capture)):
+            te.train_on_plans(_TWO_SOURCE_SPECS)
+
+        total = capture["train_data"][1].shape[0] + capture["val_data"][1].shape[0]
+        assert total == 4 + 3
+
+
+class TestTrainOnPlansValidation:
+    def test_mismatched_cls_labels_raises(self):
+        """Restriction guarantees a single collection's plan always has
+        exactly its own resolved class_aliases names, so (as in Phase 3's
+        cross-experiment test) the only way this can legitimately arise is
+        the same alias resolving to different names across collections."""
+        cwru_header = _FAULT_ELEMENT_HEADER  # IR -> "inner ring"
+        paderborn_header = {
+            "fault_element": {
+                0: {"name": "normal", "alias": "NR"},
+                1: {"name": "outer ring", "alias": "IR"},  # misconfigured
+            }
+        }
+        cwru = _make_mock_collection(
+            "cwru", {frozenset({"fault_size": 1}.items()): _make_plan("cwru", "l1", ["normal", "inner ring"])}, header=cwru_header,
+        )
+        paderborn = _make_mock_collection(
+            "paderborn", {frozenset({"fault_size": 1}.items()): _make_plan("paderborn", "l2", ["normal", "outer ring"])}, header=paderborn_header,
+        )
+        config = _make_experiment_config()
+        te = TransferExperiment(
+            {"cwru": (cwru, MagicMock(side_effect=_fake_reader)), "paderborn": (paderborn, MagicMock(side_effect=_fake_reader))},
+            config, class_aliases=("NR", "IR"), target="fault_element",
+        )
+
+        with pytest.raises(ValueError, match="cls_labels mismatch"):
+            te.train_on_plans(_TWO_SOURCE_SPECS)
+
+    def test_mismatched_feature_shapes_raises(self):
+        te = _make_two_source_te()
+
+        def fake_load(self, plan):
+            shape = (1, 600) if self._collection.name == "cwru" else (1, 500)
+            return torch.randn(2, *shape), torch.zeros(2, dtype=torch.long), _TWO_SOURCE_CLS_LABELS, None
+
+        with patch.object(Experiment, "load_plan_arrays", fake_load):
+            with pytest.raises(ValueError, match="Feature shape mismatch"):
+                te.train_on_plans(_TWO_SOURCE_SPECS)
+
+
+class TestTrainOnPlansAuxChannelGuard:
+    """Pin 1: aux channels are all-or-none across sources. Mixed presence
+    would otherwise make torch.cat produce an aux tensor shorter than X,
+    silently misaligning rows with their signals -- no exception."""
+
+    def test_mixed_aux_presence_raises(self):
+        te = _make_two_source_te()
+
+        def fake_load(self, plan):
+            if self._collection.name == "cwru":
+                return torch.randn(4, 1, 600), torch.zeros(4, dtype=torch.long), _TWO_SOURCE_CLS_LABELS, torch.randn(4, 1)
+            return torch.randn(3, 1, 600), torch.zeros(3, dtype=torch.long), _TWO_SOURCE_CLS_LABELS, None
+
+        with patch.object(Experiment, "load_plan_arrays", fake_load):
+            with pytest.raises(ValueError, match="aux"):
+                te.train_on_plans(_TWO_SOURCE_SPECS)
+
+    def test_both_present_merged_aux_length_matches_x(self):
+        te = _make_two_source_te()
+
+        def fake_load(self, plan):
+            n = 4 if self._collection.name == "cwru" else 3
+            return torch.randn(n, 1, 600), torch.zeros(n, dtype=torch.long), _TWO_SOURCE_CLS_LABELS, torch.randn(n, 1)
+
+        capture = {}
+        with patch.object(Experiment, "load_plan_arrays", fake_load), patch.object(Trainer, "fit", _capturing_trainer_fit(capture)):
+            te.train_on_plans(_TWO_SOURCE_SPECS)
+
+        X_train, Y_train, aux_train = capture["train_data"]
+        X_val, Y_val, aux_val = capture["val_data"]
+        assert aux_train is not None and aux_val is not None
+        assert aux_train.shape[0] == X_train.shape[0] == Y_train.shape[0]
+        assert aux_val.shape[0] == X_val.shape[0] == Y_val.shape[0]
+        assert aux_train.shape[0] + aux_val.shape[0] == 4 + 3
+
+
+class TestTrainOnPlansDeterminism:
+    """Mirrors TestBuilderDeterminism's build-twice-compare pattern."""
+
+    def _run_capturing_splits(self, specs):
+        te = _make_two_source_te()
+
+        def fake_load(self, plan):
+            n = 4 if self._collection.name == "cwru" else 3
+            return torch.randn(n, 1, 600), torch.zeros(n, dtype=torch.long), _TWO_SOURCE_CLS_LABELS, None
+
+        capture = {}
+        with patch.object(Experiment, "load_plan_arrays", fake_load), patch.object(Trainer, "fit", _capturing_trainer_fit(capture)):
+            te.train_on_plans(specs)
+        return capture["train_data"][1].clone(), capture["val_data"][1].clone()
+
+    def test_same_seed_produces_same_split(self):
+        y1 = self._run_capturing_splits(_TWO_SOURCE_SPECS)
+        y2 = self._run_capturing_splits(_TWO_SOURCE_SPECS)
+        assert torch.equal(y1[0], y2[0])
+        assert torch.equal(y1[1], y2[1])
+
+    def test_order_invariant_same_seed_opposite_source_order(self):
+        """Pin 2: train_on_plans canonicalizes source order by qualified
+        label before seeding/loading, so swapped input order must not
+        change the result."""
+        specs_reversed = tuple(reversed(_TWO_SOURCE_SPECS))
+        y_forward = self._run_capturing_splits(_TWO_SOURCE_SPECS)
+        y_reversed = self._run_capturing_splits(specs_reversed)
+        assert torch.equal(y_forward[0], y_reversed[0])
+        assert torch.equal(y_forward[1], y_reversed[1])
+
+
+class TestTrainOnPlansNormalizerFitScope:
+    """Pin 4: pins 'normalizer fit on merged train only' directly, since
+    it's the headline semantic of train_on_plans' docstring."""
+
+    def test_dataset_mode_fits_exactly_once_on_merged_train_split(self):
+        te = _make_two_source_te(config=_make_experiment_config(normalization="dataset"))
+
+        def fake_load(self, plan):
+            n = 4 if self._collection.name == "cwru" else 3
+            return torch.randn(n, 1, 600), torch.zeros(n, dtype=torch.long), _TWO_SOURCE_CLS_LABELS, None
+
+        capture = {}
+        fit_calls = []
+        real_fit = Normalisator.fit
+
+        def spy_fit(self, x):
+            fit_calls.append(x)
+            return real_fit(self, x)
+
+        with patch.object(Experiment, "load_plan_arrays", fake_load), \
+             patch.object(Trainer, "fit", _capturing_trainer_fit(capture)), \
+             patch.object(Normalisator, "fit", spy_fit):
+            te.train_on_plans(_TWO_SOURCE_SPECS)
+
+        assert len(fit_calls) == 1
+        assert fit_calls[0].shape[0] == capture["train_data"][1].shape[0]
+
+    @pytest.mark.parametrize("mode", ["sample", "none"])
+    def test_non_dataset_modes_never_call_fit(self, mode):
+        te = _make_two_source_te(config=_make_experiment_config(normalization=mode))
+
+        def fake_load(self, plan):
+            n = 4 if self._collection.name == "cwru" else 3
+            return torch.randn(n, 1, 600), torch.zeros(n, dtype=torch.long), _TWO_SOURCE_CLS_LABELS, None
+
+        with patch.object(Experiment, "load_plan_arrays", fake_load), \
+             patch.object(Trainer, "fit", _capturing_trainer_fit({})), \
+             patch.object(Normalisator, "fit") as mock_fit:
+            te.train_on_plans(_TWO_SOURCE_SPECS)
+
+        mock_fit.assert_not_called()

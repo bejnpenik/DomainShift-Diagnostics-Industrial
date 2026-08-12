@@ -54,6 +54,52 @@ class ExperimentTrainResult:
     def model(self) -> nn.Module:
         return self.train_result.model
 
+
+def _make_normalizer(config: ExperimentConfig) -> Normalisator:
+    """Create a fresh Normalisator from an experiment config."""
+    if config.normalization == 'pretrained':
+        if config.normalization_vals is None:
+            raise ValueError('Pretrained normalization requires mean and std')
+        mean, std = config.normalization_vals
+        return Normalisator(mode='pretrained', mean=mean, std=std)
+    if config.normalization not in ('dataset', 'sample', 'none'):
+        raise ValueError(f'Unknown normalization mode: {config.normalization}')
+    return Normalisator(mode=config.normalization)
+
+
+def split_and_normalize(
+    X: torch.Tensor,
+    Y: torch.Tensor,
+    X_aux: torch.Tensor | None,
+    config: ExperimentConfig,
+):
+    """Split (train/val) and normalize already-loaded arrays.
+
+    Shared by Experiment._prepare_data_splits (single plan) and
+    TransferExperiment.train_on_plans (merged multi-source data) -- public
+    (no leading underscore) because it has two legitimate cross-module
+    consumers, not just Experiment's own internals.
+    """
+    indices = np.arange(len(X))
+    train_idx, val_idx = train_test_split(
+        indices,
+        test_size=config.train_val_split_ratio,
+        random_state=config.random_seed,
+    )
+    X_train, X_val = X[train_idx], X[val_idx]
+    Y_train, Y_val = Y[train_idx], Y[val_idx]
+    aux_train = X_aux[train_idx] if X_aux is not None else None
+    aux_val   = X_aux[val_idx]   if X_aux is not None else None
+
+    train_norm = _make_normalizer(config)
+    if config.normalization == "dataset":
+        train_norm.fit(X_train)
+    X_train = train_norm(X_train)
+    X_val   = train_norm(X_val)
+
+    return (X_train, Y_train, aux_train), (X_val, Y_val, aux_val), train_norm
+
+
 class Experiment:
     """Orchestrates training and evaluation across single/multiple dataset plans."""
     
@@ -95,14 +141,7 @@ class Experiment:
     
     def _make_normalizer(self) -> Normalisator:
         """Create a fresh Normalisator from experiment config."""
-        if self._config.normalization == 'pretrained':
-            if self._config.normalization_vals is None:
-                raise ValueError('Pretrained normalization requires mean and std')
-            mean, std = self._config.normalization_vals
-            return Normalisator(mode='pretrained', mean=mean, std=std)
-        if self._config.normalization not in ('dataset', 'sample', 'none'):
-            raise ValueError(f'Unknown normalization mode: {self._config.normalization}')
-        return Normalisator(mode=self._config.normalization)
+        return _make_normalizer(self._config)
 
     def load_plan_arrays(
         self, plan: DatasetPlan
@@ -126,24 +165,8 @@ class Experiment:
             dataset_plan, None, self._config.random_seed
         )
 
-        indices = np.arange(len(X))
-        train_idx, val_idx = train_test_split(
-            indices,
-            test_size=self._config.train_val_split_ratio,
-            random_state=self._config.random_seed,
-        )
-        X_train, X_val = X[train_idx], X[val_idx]
-        Y_train, Y_val = Y[train_idx], Y[val_idx]
-        aux_train = X_aux[train_idx] if X_aux is not None else None
-        aux_val   = X_aux[val_idx]   if X_aux is not None else None
-
-        train_norm = self._make_normalizer()
-        if self._config.normalization == "dataset":
-            train_norm.fit(X_train)
-        X_train = train_norm(X_train)
-        X_val   = train_norm(X_val)
-
-        return (X_train, Y_train, aux_train), (X_val, Y_val, aux_val), cls_labels, train_norm
+        train_data, val_data, train_norm = split_and_normalize(X, Y, X_aux, self._config)
+        return train_data, val_data, cls_labels, train_norm
     
     def _check_train_test_labels(self, cls_labels: dict, test_cls_labels: dict) -> bool:
         """Validate that test label set matches train label set."""
