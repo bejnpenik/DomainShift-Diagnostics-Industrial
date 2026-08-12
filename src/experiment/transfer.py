@@ -21,6 +21,7 @@ from collection.dataset_plan import SampleGroup
 from reader import BaseFileReader
 from .config import ExperimentConfig
 from .experiment import Experiment
+from .validation import resolve_class_aliases_to_names
 from results import DomainSolution, MultiDomainSolution
 
 
@@ -66,6 +67,35 @@ def _pooled_label(task: Task, filter_combinations: tuple[dict, ...]) -> str:
     return f"{task.label(**merged)}-pooled"
 
 
+def restrict_to_classes(plan: DatasetPlan, class_names: frozenset[str]) -> DatasetPlan:
+    """Drop classes not in class_names, before any file is loaded.
+
+    Operates on the DatasetPlan itself -- this must happen here, at the plan
+    level, and never after DomainDataset has already loaded files: if
+    exclusion happened post-load, excluded-class signals would still flow
+    into the dataset-mode normalizer's .fit() call and contaminate the
+    source collection's normalization statistics with data that was never
+    supposed to be part of the shared label space (e.g. CWRU's 'ball'
+    class, absent from Paderborn).
+
+    Deliberately KEEPS the plan's original label -- self-evaluation label
+    matching between a source and its own target depends on the label being
+    unaffected by which classes survived restriction.
+
+    Raises if a declared class_names entry is missing from the plan's
+    sample_groups -- validate_transfer_setup's presence check is meant to
+    catch this before training even starts; this is the runtime backstop.
+    """
+    missing = class_names - set(plan.sample_groups)
+    if missing:
+        raise ValueError(f"Plan '{plan.label}' is missing declared classes: {sorted(missing)}")
+    return DatasetPlan(
+        dataset_name=plan.dataset_name,
+        label=plan.label,
+        sample_groups={k: v for k, v in plan.sample_groups.items() if k in class_names},
+    )
+
+
 class TransferExperiment:
     """Orchestrates train-on-one-collection, evaluate-on-another.
 
@@ -80,12 +110,36 @@ class TransferExperiment:
         self,
         collections: dict[str, tuple[DatasetCollection, BaseFileReader]],
         config: ExperimentConfig,
+        class_aliases: tuple[str, ...],
+        target: str,
     ):
+        if not class_aliases:
+            raise ValueError("class_aliases must be non-empty")
+        class_aliases = tuple(class_aliases)
+
         self._collections = {name: c for name, (c, _) in collections.items()}
         self._experiments = {
             name: Experiment(c, r, config) for name, (c, r) in collections.items()
         }
         self._config = config
+        self._target = target
+
+        # Resolved once, per collection: the set of class NAMES (not
+        # aliases) every plan from that collection gets restricted to.
+        # Two aliases resolving to the same name would silently collapse
+        # num_classes, so that's a hard construction-time failure too.
+        self._class_names_by_collection: dict[str, frozenset[str]] = {}
+        for name, collection in self._collections.items():
+            resolved_names = resolve_class_aliases_to_names(collection, target, class_aliases)
+            names = frozenset(resolved_names.values())
+            if len(names) != len(class_aliases):
+                raise ValueError(
+                    f"Collection '{name}': class_aliases {class_aliases} resolve to only "
+                    f"{len(names)} distinct class name(s) ({sorted(names)}) -- two or more "
+                    f"aliases collapse to the same class, which would silently change "
+                    f"num_classes."
+                )
+            self._class_names_by_collection[name] = names
 
     @property
     def processor_name(self) -> str:
@@ -94,20 +148,36 @@ class TransferExperiment:
     def _get_plan(self, collection_name: str, task: Task, filters: dict | tuple[dict, ...]) -> DatasetPlan:
         """Single chokepoint for ALL plan acquisition in the transfer layer.
 
-        Construct (dict filters) or pool (tuple/list of filter dicts).
-        A later restriction step (dropping classes not in a study's
-        class_aliases) is meant to extend this same method -- every call
-        site already routes through here, so adding that step later can't
-        be forgotten by any caller.
+        Construct (dict filters) or pool (tuple/list of filter dicts), then
+        restrict to this TransferExperiment's class_aliases before
+        returning -- every call site already routes through here, so
+        restriction can't be forgotten by any caller.
         """
+        if task.target != self._target:
+            raise ValueError(
+                f"Task target '{task.target}' does not match this TransferExperiment's "
+                f"configured target '{self._target}' (collection '{collection_name}'). "
+                f"class_aliases were resolved against '{self._target}'; a task with a "
+                f"different target would silently use the wrong class-name set."
+            )
+
         collection = self._collections[collection_name]
         if isinstance(filters, dict):
-            return collection.construct_dataset_plan(task, **filters)
-        if not filters:
+            plan = collection.construct_dataset_plan(task, **filters)
+        else:
+            if not filters:
+                raise ValueError(
+                    f"Pooling requires at least one filter combination (collection '{collection_name}')"
+                )
+            plan = self._build_pooled_plan(collection, task, tuple(filters))
+
+        plan = restrict_to_classes(plan, self._class_names_by_collection[collection_name])
+        if not plan.is_complete:
             raise ValueError(
-                f"Pooling requires at least one filter combination (collection '{collection_name}')"
+                f"Plan '{plan.label}' for collection '{collection_name}' has empty classes "
+                f"after restriction: {plan.empty_classes}"
             )
-        return self._build_pooled_plan(collection, task, tuple(filters))
+        return plan
 
     def _build_pooled_plan(
         self, collection: DatasetCollection, task: Task, filter_combinations: tuple[dict, ...]

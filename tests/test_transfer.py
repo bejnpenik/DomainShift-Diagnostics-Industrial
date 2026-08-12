@@ -6,13 +6,14 @@ style. Experiment.train_on_plan / evaluate_on_plan are patched at the class
 level for orchestration-focused tests (label qualification, chokepoint
 routing, self-eval preflight, pooling, sanitization) -- these test
 TransferExperiment's own logic, not Experiment's training/data-loading
-correctness. The cross-experiment cls_labels-mismatch test is the
-exception: it needs evaluate_on_plan's REAL internals, so it uses a working
-reader+processor stack for that one collection instead of mocking it.
+correctness. Tests that need to prove data actually flowed a particular way
+(cross-experiment label mismatch, restriction dropping a class end-to-end,
+normalizer contamination) use a working reader+processor stack instead.
 """
 
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -28,6 +29,7 @@ from experiment.transfer import (
     TransferExperiment,
     TransferSpec,
     sanitize_label_for_filename,
+    restrict_to_classes,
     _pooled_label,
 )
 from training.config import TrainerConfig, TrainResult
@@ -39,6 +41,26 @@ from study.pipeline import PipelineConfig
 # =====================================================================
 # Helpers
 # =====================================================================
+
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+
+_FAULT_ELEMENT_HEADER = {
+    "fault_element": {
+        0: {"name": "normal", "alias": "NR"},
+        1: {"name": "inner ring", "alias": "IR"},
+        2: {"name": "outer ring", "alias": "OR"},
+    }
+}
+
+_CWRU_FAULT_ELEMENT_HEADER_WITH_BALL = {
+    "fault_element": {
+        0: {"name": "normal", "alias": "NR"},
+        1: {"name": "inner ring", "alias": "IR"},
+        2: {"name": "outer ring", "alias": "OR"},
+        3: {"name": "ball", "alias": "BA"},
+    }
+}
+
 
 def _make_processor_config():
     from representation.signal.config import SignalProcessorConfig, RawViewConfig
@@ -84,11 +106,23 @@ def _make_plan(dataset_name, label, classes):
     return DatasetPlan(dataset_name=dataset_name, label=label, sample_groups=groups)
 
 
-def _make_mock_collection(name, plans_by_filters, reader_side_effect=None):
+def _make_mock_collection(name, plans_by_filters, header=None):
     """plans_by_filters: {frozenset(filters.items()): DatasetPlan}."""
     collection = MagicMock()
     collection.name = name
     collection.channels = {"vibration": SignalChannelConfig(reader_channel="vibration", sampling_rate=12000)}
+    collection.header = header or {}
+
+    def get_filter_value_from_description(field, description):
+        for code, desc in collection.header[field].items():
+            if isinstance(desc, dict):
+                if desc.get("alias") == description or desc.get("name") == description:
+                    return code
+            elif desc == description:
+                return code
+        raise ValueError(f"Filter '{field}' value '{description}' not found in header.")
+
+    collection.get_filter_value_from_description = MagicMock(side_effect=get_filter_value_from_description)
 
     def construct_dataset_plan(task, **filters):
         key = frozenset(filters.items())
@@ -100,8 +134,8 @@ def _make_mock_collection(name, plans_by_filters, reader_side_effect=None):
     return collection
 
 
-def _make_task(domain_factors=("fault_size",)):
-    return Task(target="fault_element", domain_factors=tuple(domain_factors))
+def _make_task(domain_factors=("fault_size",), target="fault_element"):
+    return Task(target=target, domain_factors=tuple(domain_factors))
 
 
 def _make_train_result(model=None):
@@ -133,14 +167,21 @@ def _fake_reader(path, metadata, channels):
 
 class TestRunTransferBasic:
     def test_source_and_two_targets_qualified_labels(self):
-        cwru = _make_mock_collection("cwru", {
-            frozenset({"fault_size": 1}.items()): _make_plan("cwru", "fault_element-fault_size=1", ["normal", "inner ring"]),
-        })
-        paderborn = _make_mock_collection("paderborn", {
-            frozenset({"fault_size": 1}.items()): _make_plan("paderborn", "fault_element-fault_size=1", ["normal", "inner ring"]),
-        })
+        cwru = _make_mock_collection(
+            "cwru",
+            {frozenset({"fault_size": 1}.items()): _make_plan("cwru", "fault_element-fault_size=1", ["normal", "inner ring"])},
+            header=_FAULT_ELEMENT_HEADER,
+        )
+        paderborn = _make_mock_collection(
+            "paderborn",
+            {frozenset({"fault_size": 1}.items()): _make_plan("paderborn", "fault_element-fault_size=1", ["normal", "inner ring"])},
+            header=_FAULT_ELEMENT_HEADER,
+        )
         config = _make_experiment_config()
-        te = TransferExperiment({"cwru": (cwru, MagicMock()), "paderborn": (paderborn, MagicMock())}, config)
+        te = TransferExperiment(
+            {"cwru": (cwru, MagicMock()), "paderborn": (paderborn, MagicMock())},
+            config, class_aliases=("NR", "IR"), target="fault_element",
+        )
         task = _make_task()
 
         source_specs = (TransferSpec("cwru", task, {"fault_size": 1}),)
@@ -164,19 +205,24 @@ class TestRunTransferBasic:
 
 
 # =====================================================================
-# Pin 1 — self-eval presence checked before any training
+# Pin 1 (Phase 2) — self-eval presence checked before any training
 # =====================================================================
 
 class TestSelfEvalPreflightCheck:
     def test_missing_self_eval_target_raises_before_training(self):
-        cwru = _make_mock_collection("cwru", {
-            frozenset({"fault_size": 1}.items()): _make_plan("cwru", "fault_element-fault_size=1", ["normal"]),
-        })
-        paderborn = _make_mock_collection("paderborn", {
-            frozenset({"fault_size": 1}.items()): _make_plan("paderborn", "fault_element-fault_size=1", ["normal"]),
-        })
+        cwru = _make_mock_collection(
+            "cwru", {frozenset({"fault_size": 1}.items()): _make_plan("cwru", "fault_element-fault_size=1", ["normal"])},
+            header=_FAULT_ELEMENT_HEADER,
+        )
+        paderborn = _make_mock_collection(
+            "paderborn", {frozenset({"fault_size": 1}.items()): _make_plan("paderborn", "fault_element-fault_size=1", ["normal"])},
+            header=_FAULT_ELEMENT_HEADER,
+        )
         config = _make_experiment_config()
-        te = TransferExperiment({"cwru": (cwru, MagicMock()), "paderborn": (paderborn, MagicMock())}, config)
+        te = TransferExperiment(
+            {"cwru": (cwru, MagicMock()), "paderborn": (paderborn, MagicMock())},
+            config, class_aliases=("NR",), target="fault_element",
+        )
         task = _make_task()
 
         source_specs = (TransferSpec("cwru", task, {"fault_size": 1}),)
@@ -189,7 +235,7 @@ class TestSelfEvalPreflightCheck:
 
 
 # =====================================================================
-# Pin 2 — deterministic pooled labels
+# Pin 2 (Phase 2) — deterministic pooled labels
 # =====================================================================
 
 class TestPooledLabel:
@@ -208,29 +254,42 @@ class TestPooledLabel:
 
 
 # =====================================================================
-# Pin 3 — cross-experiment cls_labels mismatch raises the existing
-# runtime guard (pins the real evaluate_on_plan path, not a mock)
+# Pin 3 (Phase 2) — cross-experiment cls_labels mismatch raises the
+# existing runtime guard (pins the real evaluate_on_plan path)
 # =====================================================================
 
 class TestCrossExperimentLabelMismatchRuntimeCheck:
     def test_target_plan_with_different_classes_raises_runtime_error(self):
+        """Restriction now guarantees a single collection's plan always
+        contains exactly its own resolved class_aliases names, so a
+        same-collection mismatch can no longer happen post-restriction.
+        The remaining way this guard can still fire is exactly what it's
+        for: a misconfigured setup where the SAME alias resolves to
+        DIFFERENT names across collections (what validate_transfer_setup's
+        check (a) is meant to catch beforehand) -- this pins the runtime
+        backstop for when that earlier check was skipped or regresses.
+        """
+        cwru_header = _FAULT_ELEMENT_HEADER  # IR -> "inner ring"
+        paderborn_header = {
+            "fault_element": {
+                0: {"name": "normal", "alias": "NR"},
+                1: {"name": "outer ring", "alias": "IR"},  # misconfigured: IR -> "outer ring" here
+            }
+        }
         cwru_plan = _make_plan("cwru", "fault_element-fault_size=1", ["normal", "inner ring"])
         paderborn_plan = _make_plan("paderborn", "fault_element-fault_size=1", ["normal", "outer ring"])
 
-        cwru = _make_mock_collection("cwru", {frozenset({"fault_size": 1}.items()): cwru_plan})
-        paderborn = _make_mock_collection("paderborn", {frozenset({"fault_size": 1}.items()): paderborn_plan})
+        cwru = _make_mock_collection("cwru", {frozenset({"fault_size": 1}.items()): cwru_plan}, header=cwru_header)
+        paderborn = _make_mock_collection("paderborn", {frozenset({"fault_size": 1}.items()): paderborn_plan}, header=paderborn_header)
 
         config = _make_experiment_config()
         te = TransferExperiment(
-            {
-                "cwru": (cwru, MagicMock()),
-                "paderborn": (paderborn, MagicMock(side_effect=_fake_reader)),
-            },
-            config,
+            {"cwru": (cwru, MagicMock()), "paderborn": (paderborn, MagicMock(side_effect=_fake_reader))},
+            config, class_aliases=("NR", "IR"), target="fault_element",
         )
         task = _make_task()
 
-        source_cls_labels = {"inner ring": 0, "normal": 1}  # matches cwru_plan's classes
+        source_cls_labels = {"inner ring": 0, "normal": 1}  # matches cwru_plan's restricted classes
         with patch.object(Experiment, "train_on_plan", return_value=_make_exp_train_result(source_cls_labels)):
             with pytest.raises(RuntimeError, match="Train/Test labels mismatch"):
                 te.run_transfer(
@@ -245,31 +304,30 @@ class TestCrossExperimentLabelMismatchRuntimeCheck:
 
 
 # =====================================================================
-# Pin 4 — empty filter tuple guard
+# Pin 4 (Phase 2) — empty filter tuple guard
 # =====================================================================
 
 class TestEmptyFilterGuard:
     def test_get_plan_empty_tuple_raises(self):
-        cwru = _make_mock_collection("cwru", {})
+        cwru = _make_mock_collection("cwru", {}, header=_FAULT_ELEMENT_HEADER)
         config = _make_experiment_config()
-        te = TransferExperiment({"cwru": (cwru, MagicMock())}, config)
+        te = TransferExperiment({"cwru": (cwru, MagicMock())}, config, class_aliases=("NR",), target="fault_element")
         task = _make_task()
         with pytest.raises(ValueError, match="at least one filter combination"):
             te._get_plan("cwru", task, ())
 
 
 # =====================================================================
-# Adjustment 5 — target specs accept pooled OR explicit single-domain
+# Adjustment 5 (Phase 2) — target specs accept pooled OR explicit
+# single-domain filters
 # =====================================================================
 
 class TestTargetSpecGenerality:
     def test_pooled_source_with_pooled_and_single_domain_targets(self):
         task = _make_task(domain_factors=("fault_size",))
         # "normal" reuses the same code+files across domains (benign
-        # duplicate, mirrors CWRU's NR class reusing one baseline recording);
-        # "inner ring" gets distinct codes+files per domain (mirrors
-        # genuinely new data per domain) -- using _make_plan's enumerate-based
-        # codes for both would collide "inner ring" across domains too.
+        # duplicate, mirrors CWRU's NR class); "inner ring" gets distinct
+        # codes+files per domain (mirrors genuinely new data per domain).
         cwru_d1 = DatasetPlan(
             dataset_name="cwru", label="unused1",
             sample_groups={
@@ -284,16 +342,17 @@ class TestTargetSpecGenerality:
                 "inner ring": SampleGroup(codes={20: ["ir_d2.mat"]}, metadata={20: Metadata({})}),
             },
         )
-        cwru = _make_mock_collection("cwru", {
-            frozenset({"fault_size": 1}.items()): cwru_d1,
-            frozenset({"fault_size": 2}.items()): cwru_d2,
-        })
+        cwru = _make_mock_collection(
+            "cwru", {frozenset({"fault_size": 1}.items()): cwru_d1, frozenset({"fault_size": 2}.items()): cwru_d2},
+            header=_FAULT_ELEMENT_HEADER,
+        )
         pad_single = _make_plan("paderborn", "fault_element-fault_size=1", ["normal", "inner ring"])
-        paderborn = _make_mock_collection("paderborn", {
-            frozenset({"fault_size": 1}.items()): pad_single,
-        })
+        paderborn = _make_mock_collection("paderborn", {frozenset({"fault_size": 1}.items()): pad_single}, header=_FAULT_ELEMENT_HEADER)
         config = _make_experiment_config()
-        te = TransferExperiment({"cwru": (cwru, MagicMock()), "paderborn": (paderborn, MagicMock())}, config)
+        te = TransferExperiment(
+            {"cwru": (cwru, MagicMock()), "paderborn": (paderborn, MagicMock())},
+            config, class_aliases=("NR", "IR"), target="fault_element",
+        )
 
         pooled_filters = ({"fault_size": 1}, {"fault_size": 2})
         source_specs = (TransferSpec("cwru", task, pooled_filters),)
@@ -314,7 +373,7 @@ class TestTargetSpecGenerality:
 
 
 # =====================================================================
-# Adjustment 3 — filesystem-safe artifact names
+# Adjustment 3 (Phase 2) — filesystem-safe artifact names
 # =====================================================================
 
 class TestSanitizeLabelForFilename:
@@ -332,11 +391,12 @@ class TestSanitizeLabelForFilename:
 
 class TestModelSaveDirUsesSanitizedNames:
     def test_saved_model_file_uses_sanitized_name_labels_stay_qualified(self, tmp_path):
-        cwru = _make_mock_collection("cwru", {
-            frozenset({"fault_size": 1}.items()): _make_plan("cwru", "fault_element-fault_size=1", ["normal", "inner ring"]),
-        })
+        cwru = _make_mock_collection(
+            "cwru", {frozenset({"fault_size": 1}.items()): _make_plan("cwru", "fault_element-fault_size=1", ["normal", "inner ring"])},
+            header=_FAULT_ELEMENT_HEADER,
+        )
         config = _make_experiment_config()
-        te = TransferExperiment({"cwru": (cwru, MagicMock())}, config)
+        te = TransferExperiment({"cwru": (cwru, MagicMock())}, config, class_aliases=("NR", "IR"), target="fault_element")
         task = _make_task()
 
         model = nn.Linear(2, 2)
@@ -355,7 +415,346 @@ class TestModelSaveDirUsesSanitizedNames:
         state_dict = torch.load(expected_file)
         assert set(state_dict.keys()) == set(model.state_dict().keys())
 
-        # containers/CSV-facing labels still carry the colon form
         ds = mds.domain_solutions[0]
         assert ds.train_dataset_name == qualified_label
         assert qualified_label in ds.confusion_matrices
+
+
+# =====================================================================
+# Phase 3 pin 2 — task.target must match the constructor's target
+# =====================================================================
+
+class TestTargetGuard:
+    def test_mismatched_task_target_raises_naming_both(self):
+        cwru = _make_mock_collection(
+            "cwru", {frozenset({"fault_size": 1}.items()): _make_plan("cwru", "label", ["normal", "inner ring"])},
+            header=_FAULT_ELEMENT_HEADER,
+        )
+        config = _make_experiment_config()
+        te = TransferExperiment({"cwru": (cwru, MagicMock())}, config, class_aliases=("NR", "IR"), target="fault_element")
+
+        wrong_target_task = Task(target="bearing_position", domain_factors=("fault_size",))
+        with pytest.raises(ValueError) as exc:
+            te._get_plan("cwru", wrong_target_task, {"fault_size": 1})
+        message = str(exc.value)
+        assert "fault_element" in message
+        assert "bearing_position" in message
+
+
+# =====================================================================
+# Phase 3 pin 3 — constructor guards
+# =====================================================================
+
+class TestConstructorGuards:
+    def test_empty_class_aliases_raises(self):
+        cwru = _make_mock_collection("cwru", {}, header=_FAULT_ELEMENT_HEADER)
+        config = _make_experiment_config()
+        with pytest.raises(ValueError, match="non-empty"):
+            TransferExperiment({"cwru": (cwru, MagicMock())}, config, class_aliases=(), target="fault_element")
+
+    def test_aliases_collapsing_to_same_name_raises(self):
+        header = {
+            "fault_element": {
+                0: {"name": "normal", "alias": "NR"},
+                1: {"name": "normal", "alias": "N2"},  # different alias, SAME name -> collapse
+            }
+        }
+        cwru = _make_mock_collection("cwru", {}, header=header)
+        config = _make_experiment_config()
+        with pytest.raises(ValueError, match="collapse"):
+            TransferExperiment({"cwru": (cwru, MagicMock())}, config, class_aliases=("NR", "N2"), target="fault_element")
+
+
+# =====================================================================
+# Phase 3 pin 4 — full run_transfer under ACTIVE restriction
+# =====================================================================
+
+class TestRunTransferUnderActiveRestriction:
+    def test_extra_class_dropped_from_full_run_transfer_result(self):
+        """No mocking of train_on_plan/evaluate_on_plan here -- the extra
+        'ball' class must never reach the real training/eval path at all,
+        proving the whole train->eval flow under restriction, not just the
+        chokepoint in isolation."""
+        cwru_plan = _make_plan("cwru", "label", ["normal", "inner ring", "ball"])
+        cwru = _make_mock_collection(
+            "cwru", {frozenset({"fault_size": 1}.items()): cwru_plan},
+            header=_CWRU_FAULT_ELEMENT_HEADER_WITH_BALL,
+        )
+        config = _make_experiment_config()
+        te = TransferExperiment(
+            {"cwru": (cwru, MagicMock(side_effect=_fake_reader))},
+            config, class_aliases=("NR", "IR"), target="fault_element",
+        )
+        task = _make_task()
+
+        mds = te.run_transfer(
+            source_specs=(TransferSpec("cwru", task, {"fault_size": 1}),),
+            target_specs=(TransferSpec("cwru", task, {"fault_size": 1}),),
+        )
+
+        ds = mds.domain_solutions[0]
+        # class_labels is {name: index} (matches run_pairwise's existing
+        # convention: DomainSolution.class_labels is populated directly
+        # from ExperimentTrainResult.cls_labels, name-keyed).
+        assert set(ds.class_labels.keys()) == {"normal", "inner ring"}
+        assert "ball" not in ds.class_labels
+        for cm in ds.confusion_matrices.values():
+            assert cm.shape == (2, 2)  # not 3x3 -- "ball" dimension never appears
+
+
+# =====================================================================
+# Phase 3 pin 5 — chokepoint spy
+# =====================================================================
+
+class TestChokepointSpy:
+    def test_every_plan_used_passes_through_get_plan(self):
+        cwru = _make_mock_collection(
+            "cwru", {frozenset({"fault_size": 1}.items()): _make_plan("cwru", "fault_element-fault_size=1", ["normal", "inner ring"])},
+            header=_FAULT_ELEMENT_HEADER,
+        )
+        paderborn = _make_mock_collection(
+            "paderborn", {frozenset({"fault_size": 1}.items()): _make_plan("paderborn", "fault_element-fault_size=1", ["normal", "inner ring"])},
+            header=_FAULT_ELEMENT_HEADER,
+        )
+        config = _make_experiment_config()
+        te = TransferExperiment(
+            {"cwru": (cwru, MagicMock()), "paderborn": (paderborn, MagicMock())},
+            config, class_aliases=("NR", "IR"), target="fault_element",
+        )
+        task = _make_task()
+
+        source_specs = (TransferSpec("cwru", task, {"fault_size": 1}),)
+        target_specs = (
+            TransferSpec("cwru", task, {"fault_size": 1}),
+            TransferSpec("paderborn", task, {"fault_size": 1}),
+        )
+
+        cls_labels = {"inner ring": 0, "normal": 1}
+        with patch.object(te, "_get_plan", wraps=te._get_plan) as spy:
+            with patch.object(Experiment, "train_on_plan", return_value=_make_exp_train_result(cls_labels)), \
+                 patch.object(Experiment, "evaluate_on_plan", return_value=(_fake_confusion_matrix(), "unused")):
+                te.run_transfer(source_specs, target_specs)
+
+        # Expected count = len(sources) + len(targets): Phase 2's design
+        # resolves every plan exactly ONCE up front (targets first, then
+        # sources) and reuses the resolved plan/label for both the
+        # self-eval check and the actual train/eval calls -- it never
+        # re-resolves a plan per source. If a future change switches to
+        # per-source re-resolution of targets, this count will change;
+        # that's a design decision to revisit deliberately, not a silent
+        # regression to chase.
+        assert spy.call_count == len(source_specs) + len(target_specs)
+
+
+# =====================================================================
+# restrict_to_classes — tests (a) identity-preserving drop, (d) missing
+# declared class raises, plus label preservation
+# =====================================================================
+
+class TestRestrictToClasses:
+    def test_drops_correct_classes_keeps_survivors_intact(self):
+        codes_normal = {0: ["normal_0.mat"]}
+        meta_normal = {0: Metadata({"x": 1})}
+        codes_ir = {1: ["ir_0.mat"]}
+        meta_ir = {1: Metadata({"x": 2})}
+        plan = DatasetPlan(
+            dataset_name="cwru", label="fault_element-fault_size=1",
+            sample_groups={
+                "normal": SampleGroup(codes=codes_normal, metadata=meta_normal),
+                "inner ring": SampleGroup(codes=codes_ir, metadata=meta_ir),
+                "ball": SampleGroup(codes={2: ["ball_0.mat"]}, metadata={2: Metadata({})}),
+            },
+        )
+        restricted = restrict_to_classes(plan, frozenset({"normal", "inner ring"}))
+
+        assert set(restricted.sample_groups) == {"normal", "inner ring"}
+        assert restricted.sample_groups["normal"].codes is codes_normal
+        assert restricted.sample_groups["normal"].metadata is meta_normal
+        assert restricted.sample_groups["inner ring"].codes is codes_ir
+        assert restricted.sample_groups["inner ring"].metadata is meta_ir
+
+    def test_preserves_original_label(self):
+        plan = _make_plan("cwru", "fault_element-fault_size=1-pooled", ["normal", "inner ring", "ball"])
+        restricted = restrict_to_classes(plan, frozenset({"normal", "inner ring"}))
+        assert restricted.label == plan.label
+
+    def test_missing_declared_class_raises(self):
+        plan = _make_plan("cwru", "label", ["normal"])
+        with pytest.raises(ValueError, match="inner ring"):
+            restrict_to_classes(plan, frozenset({"normal", "inner ring"}))
+
+
+# =====================================================================
+# test (b) — cls_labels from a restricted plan are exactly the resolved
+# class_aliases, sorted-order indexed
+# =====================================================================
+
+class TestRestrictedPlanClsLabels:
+    def test_cls_labels_exactly_class_aliases_sorted(self):
+        cwru = _make_mock_collection(
+            "cwru", {frozenset({"fault_size": 1}.items()): _make_plan("cwru", "label", ["normal", "inner ring", "ball"])},
+            header=_CWRU_FAULT_ELEMENT_HEADER_WITH_BALL,
+        )
+        config = _make_experiment_config()
+        te = TransferExperiment(
+            {"cwru": (cwru, MagicMock(side_effect=_fake_reader))},
+            config, class_aliases=("NR", "IR"), target="fault_element",
+        )
+        task = _make_task()
+
+        plan = te._get_plan("cwru", task, {"fault_size": 1})
+        _, _, cls_labels, _ = te._experiments["cwru"].load_plan_arrays(plan)
+
+        assert cls_labels == {"inner ring": 0, "normal": 1}
+
+
+# =====================================================================
+# test (c) — dataset-mode normalizer fit through the restricted path is
+# unaffected by the excluded, wildly-different-magnitude class
+# =====================================================================
+
+class TestNormalizerNotContaminatedByExcludedClass:
+    def test_dataset_mode_normalizer_stats_unaffected_by_excluded_class(self):
+        def magnitude_reader(path, metadata, channels):
+            if "ball" in path:
+                signal = (np.random.randn(2000).astype(np.float32) * 50.0) + 5000.0
+            else:
+                signal = np.random.randn(2000).astype(np.float32)
+            return {"vibration": signal}
+
+        cwru_plan = DatasetPlan(
+            dataset_name="cwru", label="fault_element-fault_size=1",
+            sample_groups={
+                "normal": SampleGroup(codes={0: ["normal_0.mat"]}, metadata={0: Metadata({})}),
+                "inner ring": SampleGroup(codes={1: ["inner_ring_0.mat"]}, metadata={1: Metadata({})}),
+                "outer ring": SampleGroup(codes={2: ["outer_ring_0.mat"]}, metadata={2: Metadata({})}),
+                "ball": SampleGroup(codes={3: ["ball_0.mat"]}, metadata={3: Metadata({})}),
+            },
+        )
+        cwru = _make_mock_collection(
+            "cwru", {frozenset({"fault_size": 1}.items()): cwru_plan},
+            header=_CWRU_FAULT_ELEMENT_HEADER_WITH_BALL,
+        )
+
+        config = _make_experiment_config(normalization="dataset")
+        te = TransferExperiment(
+            {"cwru": (cwru, MagicMock(side_effect=magnitude_reader))},
+            config, class_aliases=("NR", "IR", "OR"), target="fault_element",
+        )
+        task = _make_task()
+
+        restricted_plan = te._get_plan("cwru", task, {"fault_size": 1})
+        assert "ball" not in restricted_plan.sample_groups  # sanity: restriction actually happened
+
+        _, _, _, train_norm = te._experiments["cwru"]._prepare_data_splits(restricted_plan)
+
+        assert train_norm.mean.abs().max().item() < 5.0
+        assert (train_norm.std - 1.0).abs().max().item() < 5.0
+
+
+# =====================================================================
+# Empty-after-restriction companion runtime check
+# =====================================================================
+
+class TestEmptyAfterRestriction:
+    def test_kept_class_with_zero_codes_raises_naming_empty_classes(self):
+        plan = DatasetPlan(
+            dataset_name="cwru", label="label",
+            sample_groups={
+                "normal": SampleGroup(codes={0: ["normal_0.mat"]}, metadata={0: Metadata({})}),
+                "inner ring": SampleGroup(codes={}, metadata={}),  # kept class, but empty
+            },
+        )
+        cwru = _make_mock_collection("cwru", {frozenset({"fault_size": 1}.items()): plan}, header=_FAULT_ELEMENT_HEADER)
+        config = _make_experiment_config()
+        te = TransferExperiment({"cwru": (cwru, MagicMock())}, config, class_aliases=("NR", "IR"), target="fault_element")
+        task = _make_task()
+
+        with pytest.raises(ValueError, match="inner ring"):
+            te._get_plan("cwru", task, {"fault_size": 1})
+
+
+# =====================================================================
+# _build_pooled_plan — rigorous dedup/collision tests (Adjustment 1)
+# =====================================================================
+
+class TestBuildPooledPlanMergeSemantics:
+    def test_repeated_identical_code_deduplicates_not_sums(self):
+        """Mirrors CWRU's 'normal' class: same code+files legitimately
+        repeats across per-domain plans -- pooled count is the deduplicated
+        union, not the raw sum."""
+        cwru = _make_mock_collection("cwru", {}, header=_FAULT_ELEMENT_HEADER)
+        config = _make_experiment_config()
+        te = TransferExperiment({"cwru": (cwru, MagicMock())}, config, class_aliases=("NR",), target="fault_element")
+        task = _make_task()
+
+        plan_a = DatasetPlan(
+            dataset_name="cwru", label="a",
+            sample_groups={"normal": SampleGroup(codes={0: ["normal_0.mat"]}, metadata={0: Metadata({})})},
+        )
+        plan_b = DatasetPlan(
+            dataset_name="cwru", label="b",
+            sample_groups={"normal": SampleGroup(codes={0: ["normal_0.mat"]}, metadata={0: Metadata({})})},
+        )
+        cwru.construct_dataset_plan = MagicMock(side_effect=[plan_a, plan_b])
+
+        pooled = te._build_pooled_plan(cwru, task, ({"fault_size": 1}, {"fault_size": 2}))
+
+        assert len(pooled.sample_groups["normal"].codes) == 1  # deduplicated, not 2
+
+    def test_same_code_different_files_raises(self):
+        cwru = _make_mock_collection("cwru", {}, header=_FAULT_ELEMENT_HEADER)
+        config = _make_experiment_config()
+        te = TransferExperiment({"cwru": (cwru, MagicMock())}, config, class_aliases=("NR",), target="fault_element")
+        task = _make_task()
+
+        plan_a = DatasetPlan(
+            dataset_name="cwru", label="a",
+            sample_groups={"normal": SampleGroup(codes={0: ["a.mat"]}, metadata={0: Metadata({})})},
+        )
+        plan_b = DatasetPlan(
+            dataset_name="cwru", label="b",
+            sample_groups={"normal": SampleGroup(codes={0: ["b.mat"]}, metadata={0: Metadata({})})},
+        )
+        cwru.construct_dataset_plan = MagicMock(side_effect=[plan_a, plan_b])
+
+        with pytest.raises(ValueError, match="Pooling conflict"):
+            te._build_pooled_plan(cwru, task, ({"fault_size": 1}, {"fault_size": 2}))
+
+
+# =====================================================================
+# Phase 3 pin 1 — real CWRU/Paderborn collection metadata integration
+# (no file I/O: check_files=False -- only path lists, never file content)
+# =====================================================================
+
+class TestRealCollectionMetadataIntegration:
+    def test_real_cwru_and_paderborn_restrict_to_matching_class_sets(self):
+        from collection.collection import DatasetCollection
+        from collection.task_builder import build_task_and_filters_from_yaml
+
+        cwru_collection = DatasetCollection(_REPO_ROOT / "configs/collections/cwru.yaml", check_files=False)
+        pad_collection = DatasetCollection(_REPO_ROOT / "configs/collections/paderborn.yaml", check_files=False)
+
+        cwru_task, cwru_filters = build_task_and_filters_from_yaml(
+            _REPO_ROOT / "configs/tasks/cwru_fault_element.yaml", cwru_collection
+        )
+        pad_task, pad_filters = build_task_and_filters_from_yaml(
+            _REPO_ROOT / "configs/tasks/paderborn_fault_element.yaml", pad_collection
+        )
+
+        config = _make_experiment_config()
+        te = TransferExperiment(
+            {"cwru": (cwru_collection, MagicMock()), "paderborn": (pad_collection, MagicMock())},
+            config, class_aliases=("NR", "IR", "OR"), target="fault_element",
+        )
+
+        cwru_plan = te._get_plan("cwru", cwru_task, cwru_filters[0])
+        pad_plan = te._get_plan("paderborn", pad_task, pad_filters[0])
+
+        expected = {"normal", "inner ring", "outer ring"}
+        assert set(cwru_plan.sample_groups) == expected
+        assert set(pad_plan.sample_groups) == expected
+
+        cwru_cls_labels = {cls: i for i, cls in enumerate(sorted(cwru_plan.sample_groups))}
+        pad_cls_labels = {cls: i for i, cls in enumerate(sorted(pad_plan.sample_groups))}
+        assert cwru_cls_labels == pad_cls_labels
