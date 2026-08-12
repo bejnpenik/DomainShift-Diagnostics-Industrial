@@ -104,6 +104,20 @@ class Experiment:
             raise ValueError(f'Unknown normalization mode: {self._config.normalization}')
         return Normalisator(mode=self._config.normalization)
 
+    def load_plan_arrays(
+        self, plan: DatasetPlan
+    ) -> tuple[torch.Tensor, torch.Tensor, dict, torch.Tensor | None]:
+        """Load raw (unnormalized, unsplit) arrays for a dataset plan.
+
+        Thin public wrapper around the internal DomainDataset call, so
+        cross-collection code (transfer, multi-source training) can load
+        data without reaching into Experiment's private members. Does not
+        set global RNG seeds (mirrors evaluate_on_plan's usage) -- callers
+        that need reproducible sampling/splitting own their own set_seed
+        call (see the multi-source path in transfer.py).
+        """
+        return self._domain_dataset(plan, None, self._config.random_seed)
+
     def _prepare_data_splits(self, dataset_plan: DatasetPlan):
         """Load and split data for a dataset plan."""
         set_seed(self._config.random_seed)
