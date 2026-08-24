@@ -140,7 +140,7 @@ class DomainDataset:
                             ch: raw[ch]
                             for ch in self._processor.required_reader_channels
                         }
-                        x = self._processor.process(proc_channels)
+                        x = self._processor.process(proc_channels, metadata=meta)
                     else:
                         primary_sr = self._resolve_sampling_rate(self._primary_cfg, meta)
                         x = self._processor(raw[self._primary_cfg.reader_channel], primary_sr)

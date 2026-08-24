@@ -39,7 +39,7 @@ seeds: [11, 32, 52]
 grid:
   factors:
     model_type: [1d]
-    model_variant: [1x1, res, se, eca]
+    model_variant: [1x1, res, se, eca, cbam, rse, wse, weca, resm, sem, ecam, cbamm, rsem, wsem, wecam]
     normalization: [sample]
 
   independent:
@@ -48,7 +48,7 @@ grid:
     # appear in grid.factors or grid.dependent).
     processor: configs/processors/raw_12k.yaml
     pipeline: {primary: vibration}
-    file_sampling: {max_files_per_code: 3}
+    file_sampling: {max_files_per_code: 10}
     train_val_split_ratio: 0.33
     max_epochs: 3000
     weight_decay: 0.0001
@@ -69,3 +69,15 @@ grid:
           res: configs/models/cnn1d_res.yaml
           se: configs/models/cnn1d_se.yaml
           eca: configs/models/cnn1d_eca.yaml
+          cbam: configs/models/cnn1d_cbam.yaml
+          rse: configs/models/cnn1d_res_se.yaml
+          wse: configs/models/cnn1d_wide_se.yaml
+          weca: configs/models/cnn1d_wide_eca.yaml
+          resm: configs/models/cnn1d_res_multihead.yaml
+          sem: configs/models/cnn1d_se_multihead.yaml
+          ecam: configs/models/cnn1d_eca_multihead.yaml
+          cbamm: configs/models/cnn1d_cbam_multihead.yaml
+          rsem: configs/models/cnn1d_res_se_multihead.yaml
+          wsem: configs/models/cnn1d_wide_se_multihead.yaml
+          wecam: configs/models/cnn1d_wide_eca_multihead.yaml
+

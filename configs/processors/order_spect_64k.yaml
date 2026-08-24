@@ -11,6 +11,8 @@ angular:
   target_orders: 512
   window_revolutions: 5.0
   window_overlap: 0.2
+  anti_alias: true
+  nominal_speed_metadata_path: condition.speed
 
 view:
   type: order_spectrogram

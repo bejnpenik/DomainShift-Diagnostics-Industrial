@@ -22,13 +22,18 @@ channels:
   vibration:
     reader_channel: vibration
     sampling_rate: 64000
-    unit: "m/s²"
+    unit: "ms-2"
     description: "Piezoelectric accelerometer, bearing housing"
   phase_current:
-    reader_channel: force
+    reader_channel: phase_current_1
     sampling_rate: 64000
     unit: A
     description: "Motor phase current 1"
+  phase_current_2:
+    reader_channel: phase_current_2
+    sampling_rate: 64000
+    unit: A
+    description: "Motor phase current 2"
   rpm:
     reader_channel: rpm
     sampling_rate: 4000
@@ -39,6 +44,11 @@ channels:
     sampling_rate: 4000
     unit: Nm
     description: "Torque transducer"
+  force:
+    reader_channel: force
+    sampling_rate: 4000
+    unit: N
+    description: "Radial force on test bearing"
 
 header:
   condition:
@@ -50,11 +60,11 @@ header:
     0: {name: no repetition, alias: NR, value: no repetition}
     1: {name: random,        alias: RN, value: random}
   fault_characteristic:
-    0: {name: none,         alias: NO, value: none}
+    0: {name: none,         alias: "NO", value: none}
     1: {name: single point, alias: SP, value: single point}
     2: {name: distributed,  alias: DS, value: distributed}
   fault_combination:
-    0: {name: none,   alias: NO, value: none}
+    0: {name: none,   alias: "NO", value: none}
     1: {name: single, alias: S,  value: single}
     2: {name: repeat, alias: R,  value: repeat}
     3: {name: mixed,  alias: M,  value: mixed}
@@ -70,7 +80,7 @@ header:
     1: {name: inner ring, alias: IR, value: inner ring}
     2: {name: outer ring, alias: OR, value: outer ring}
   fault_mode:
-    0: {name: none,   alias: NO,     value: none}
+    0: {name: none,   alias: "NO",     value: none}
     1: {name: AEDM,   alias: AEDM,   value: AEDM}
     2: {name: AENG,   alias: AENG,   value: AENG}
     3: {name: ADRILL, alias: ADRILL, value: ADRILL}
@@ -84,10 +94,10 @@ files:
     condition: N09
     fault_element: NR
     fault_size: S0
-    fault_mode: NO
-    fault_combination: NO
+    fault_mode: "NO"
+    fault_combination: "NO"
     fault_arrangement: NR
-    fault_characteristic: NO
+    fault_characteristic: "NO"
     sampling_rate: 64k
     realizations: 20
     subdirectory: K001
@@ -95,10 +105,10 @@ files:
     condition: N09
     fault_element: NR
     fault_size: S0
-    fault_mode: NO
-    fault_combination: NO
+    fault_mode: "NO"
+    fault_combination: "NO"
     fault_arrangement: NR
-    fault_characteristic: NO
+    fault_characteristic: "NO"
     sampling_rate: 64k
     realizations: 20
     subdirectory: K002
@@ -106,10 +116,10 @@ files:
     condition: N09
     fault_element: NR
     fault_size: S0
-    fault_mode: NO
-    fault_combination: NO
+    fault_mode: "NO"
+    fault_combination: "NO"
     fault_arrangement: NR
-    fault_characteristic: NO
+    fault_characteristic: "NO"
     sampling_rate: 64k
     realizations: 20
     subdirectory: K003
@@ -117,10 +127,10 @@ files:
     condition: N09
     fault_element: NR
     fault_size: S0
-    fault_mode: NO
-    fault_combination: NO
+    fault_mode: "NO"
+    fault_combination: "NO"
     fault_arrangement: NR
-    fault_characteristic: NO
+    fault_characteristic: "NO"
     sampling_rate: 64k
     realizations: 20
     subdirectory: K004
@@ -128,10 +138,10 @@ files:
     condition: N09
     fault_element: NR
     fault_size: S0
-    fault_mode: NO
-    fault_combination: NO
+    fault_mode: "NO"
+    fault_combination: "NO"
     fault_arrangement: NR
-    fault_characteristic: NO
+    fault_characteristic: "NO"
     sampling_rate: 64k
     realizations: 20
     subdirectory: K005
@@ -139,10 +149,10 @@ files:
     condition: N09
     fault_element: NR
     fault_size: S0
-    fault_mode: NO
-    fault_combination: NO
+    fault_mode: "NO"
+    fault_combination: "NO"
     fault_arrangement: NR
-    fault_characteristic: NO
+    fault_characteristic: "NO"
     sampling_rate: 64k
     realizations: 20
     subdirectory: K006
@@ -403,10 +413,10 @@ files:
     condition: N15L
     fault_element: NR
     fault_size: S0
-    fault_mode: NO
-    fault_combination: NO
+    fault_mode: "NO"
+    fault_combination: "NO"
     fault_arrangement: NR
-    fault_characteristic: NO
+    fault_characteristic: "NO"
     sampling_rate: 64k
     realizations: 20
     subdirectory: K001
@@ -414,10 +424,10 @@ files:
     condition: N15L
     fault_element: NR
     fault_size: S0
-    fault_mode: NO
-    fault_combination: NO
+    fault_mode: "NO"
+    fault_combination: "NO"
     fault_arrangement: NR
-    fault_characteristic: NO
+    fault_characteristic: "NO"
     sampling_rate: 64k
     realizations: 20
     subdirectory: K002
@@ -425,10 +435,10 @@ files:
     condition: N15L
     fault_element: NR
     fault_size: S0
-    fault_mode: NO
-    fault_combination: NO
+    fault_mode: "NO"
+    fault_combination: "NO"
     fault_arrangement: NR
-    fault_characteristic: NO
+    fault_characteristic: "NO"
     sampling_rate: 64k
     realizations: 20
     subdirectory: K003
@@ -436,10 +446,10 @@ files:
     condition: N15L
     fault_element: NR
     fault_size: S0
-    fault_mode: NO
-    fault_combination: NO
+    fault_mode: "NO"
+    fault_combination: "NO"
     fault_arrangement: NR
-    fault_characteristic: NO
+    fault_characteristic: "NO"
     sampling_rate: 64k
     realizations: 20
     subdirectory: K004
@@ -447,10 +457,10 @@ files:
     condition: N15L
     fault_element: NR
     fault_size: S0
-    fault_mode: NO
-    fault_combination: NO
+    fault_mode: "NO"
+    fault_combination: "NO"
     fault_arrangement: NR
-    fault_characteristic: NO
+    fault_characteristic: "NO"
     sampling_rate: 64k
     realizations: 20
     subdirectory: K005
@@ -458,10 +468,10 @@ files:
     condition: N15L
     fault_element: NR
     fault_size: S0
-    fault_mode: NO
-    fault_combination: NO
+    fault_mode: "NO"
+    fault_combination: "NO"
     fault_arrangement: NR
-    fault_characteristic: NO
+    fault_characteristic: "NO"
     sampling_rate: 64k
     realizations: 20
     subdirectory: K006
@@ -542,6 +552,7 @@ files:
     sampling_rate: 64k
     realizations: 20
     subdirectory: KA08
+    exclude_realizations: [2]   # N15_M01_F10_KA08_2.mat is corrupt/unreadable
   N15_M01_F10_KA09:
     condition: N15L
     fault_element: OR
@@ -722,10 +733,10 @@ files:
     condition: N15F
     fault_element: NR
     fault_size: S0
-    fault_mode: NO
-    fault_combination: NO
+    fault_mode: "NO"
+    fault_combination: "NO"
     fault_arrangement: NR
-    fault_characteristic: NO
+    fault_characteristic: "NO"
     sampling_rate: 64k
     realizations: 20
     subdirectory: K001
@@ -733,10 +744,10 @@ files:
     condition: N15F
     fault_element: NR
     fault_size: S0
-    fault_mode: NO
-    fault_combination: NO
+    fault_mode: "NO"
+    fault_combination: "NO"
     fault_arrangement: NR
-    fault_characteristic: NO
+    fault_characteristic: "NO"
     sampling_rate: 64k
     realizations: 20
     subdirectory: K002
@@ -744,10 +755,10 @@ files:
     condition: N15F
     fault_element: NR
     fault_size: S0
-    fault_mode: NO
-    fault_combination: NO
+    fault_mode: "NO"
+    fault_combination: "NO"
     fault_arrangement: NR
-    fault_characteristic: NO
+    fault_characteristic: "NO"
     sampling_rate: 64k
     realizations: 20
     subdirectory: K003
@@ -755,10 +766,10 @@ files:
     condition: N15F
     fault_element: NR
     fault_size: S0
-    fault_mode: NO
-    fault_combination: NO
+    fault_mode: "NO"
+    fault_combination: "NO"
     fault_arrangement: NR
-    fault_characteristic: NO
+    fault_characteristic: "NO"
     sampling_rate: 64k
     realizations: 20
     subdirectory: K004
@@ -766,10 +777,10 @@ files:
     condition: N15F
     fault_element: NR
     fault_size: S0
-    fault_mode: NO
-    fault_combination: NO
+    fault_mode: "NO"
+    fault_combination: "NO"
     fault_arrangement: NR
-    fault_characteristic: NO
+    fault_characteristic: "NO"
     sampling_rate: 64k
     realizations: 20
     subdirectory: K005
@@ -777,10 +788,10 @@ files:
     condition: N15F
     fault_element: NR
     fault_size: S0
-    fault_mode: NO
-    fault_combination: NO
+    fault_mode: "NO"
+    fault_combination: "NO"
     fault_arrangement: NR
-    fault_characteristic: NO
+    fault_characteristic: "NO"
     sampling_rate: 64k
     realizations: 20
     subdirectory: K006
@@ -1041,10 +1052,10 @@ files:
     condition: N15
     fault_element: NR
     fault_size: S0
-    fault_mode: NO
-    fault_combination: NO
+    fault_mode: "NO"
+    fault_combination: "NO"
     fault_arrangement: NR
-    fault_characteristic: NO
+    fault_characteristic: "NO"
     sampling_rate: 64k
     realizations: 20
     subdirectory: K001
@@ -1052,10 +1063,10 @@ files:
     condition: N15
     fault_element: NR
     fault_size: S0
-    fault_mode: NO
-    fault_combination: NO
+    fault_mode: "NO"
+    fault_combination: "NO"
     fault_arrangement: NR
-    fault_characteristic: NO
+    fault_characteristic: "NO"
     sampling_rate: 64k
     realizations: 20
     subdirectory: K002
@@ -1063,10 +1074,10 @@ files:
     condition: N15
     fault_element: NR
     fault_size: S0
-    fault_mode: NO
-    fault_combination: NO
+    fault_mode: "NO"
+    fault_combination: "NO"
     fault_arrangement: NR
-    fault_characteristic: NO
+    fault_characteristic: "NO"
     sampling_rate: 64k
     realizations: 20
     subdirectory: K003
@@ -1074,10 +1085,10 @@ files:
     condition: N15
     fault_element: NR
     fault_size: S0
-    fault_mode: NO
-    fault_combination: NO
+    fault_mode: "NO"
+    fault_combination: "NO"
     fault_arrangement: NR
-    fault_characteristic: NO
+    fault_characteristic: "NO"
     sampling_rate: 64k
     realizations: 20
     subdirectory: K004
@@ -1085,10 +1096,10 @@ files:
     condition: N15
     fault_element: NR
     fault_size: S0
-    fault_mode: NO
-    fault_combination: NO
+    fault_mode: "NO"
+    fault_combination: "NO"
     fault_arrangement: NR
-    fault_characteristic: NO
+    fault_characteristic: "NO"
     sampling_rate: 64k
     realizations: 20
     subdirectory: K005
@@ -1096,10 +1107,10 @@ files:
     condition: N15
     fault_element: NR
     fault_size: S0
-    fault_mode: NO
-    fault_combination: NO
+    fault_mode: "NO"
+    fault_combination: "NO"
     fault_arrangement: NR
-    fault_characteristic: NO
+    fault_characteristic: "NO"
     sampling_rate: 64k
     realizations: 20
     subdirectory: K006

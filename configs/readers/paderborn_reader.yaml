@@ -5,16 +5,22 @@ simplify_cells: true
 
 channels:
   vibration:
-    variable_index: 6
+    variable_name: vibration_1
+    dtype: float32
+  phase_current_1:
+    variable_name: phase_current_1
+    dtype: float32
+  phase_current_2:
+    variable_name: phase_current_2
     dtype: float32
   rpm:
-    variable_index: 3
+    variable_name: speed
     dtype: float32
   torque:
-    variable_index: 5
+    variable_name: torque
     dtype: float32
   force:
-    variable_index: 2
+    variable_name: force
     dtype: float32
 
 file_key:

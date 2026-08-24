@@ -29,6 +29,7 @@ from representation.order.config import (
 from representation.order.processor import OrderTrackingProcessor
 from representation.builder import build_processor_config, build_processor_config_from_yaml
 from representation.signal.view import BaseView
+from collection.metadata import Metadata
 
 
 # =====================================================================
@@ -82,10 +83,12 @@ class TestAngularResampler:
         self.ar = AngularResampler()
 
     def test_constant_rpm_total_angle(self):
-        """1500 rpm for 1 s at 4000 Hz → 25 revolutions."""
+        """1500 rpm for 1 s at 4000 Hz, trapezoidal integration spans n-1
+        intervals → 1500/60 * 3999/4000 = 24.99375 revolutions, starting at 0."""
         rpm = np.full(4000, 1500.0)
         angle = self.ar.integrate_rpm(rpm, rpm_sr=4000)
-        assert abs(angle[-1] - 25.0) < 1e-6
+        assert angle[0] == 0.0
+        assert abs(angle[-1] - 24.99375) < 1e-6
 
     def test_angle_is_monotone(self):
         rpm = np.abs(np.random.randn(4000)) * 1000 + 100  # positive RPM
@@ -98,12 +101,11 @@ class TestAngularResampler:
         assert len(angle) == 4000
 
     def test_resample_output_length(self):
-        """Output should span ≈ 25 revolutions × 64 orders/rev = 1600 samples."""
+        """Output should span int(24.99375 * 64 orders/rev) = 1599 samples."""
         vib, rpm = _synthetic_signals(rpm_value=1500.0, duration_s=1.0, vib_sr=64000, rpm_sr=4000)
         cumangle = self.ar.integrate_rpm(rpm, rpm_sr=4000)
         angular = self.ar.resample_to_angular(vib, 64000, cumangle, 4000, target_orders=64)
-        # 25 revolutions × 64 orders/rev = 1600; endpoint=False gives exactly this
-        assert len(angular) == 1600
+        assert len(angular) == 1599
 
     def test_resample_constant_signal(self):
         """Resampling a constant vibration signal should give the same constant."""
@@ -149,6 +151,106 @@ class TestAngularResampler:
         signal = np.arange(1600, dtype=float)
         windows = self.ar.segment_angular(signal, 64, 2.0, 0.0)
         np.testing.assert_array_equal(windows[0], signal[:128])
+
+
+# =====================================================================
+# TestOrderLockedRamp / TestAntiAliasing / TestScalarRpmBroadcast
+#
+# Physics regression tests encoding an external numerical review's
+# validation results: an order-locked tone survives a speed ramp, a
+# high-frequency tone aliases without the anti-aliasing filter and is
+# suppressed with it, and metadata-only (scalar) RPM is broadcast correctly.
+# =====================================================================
+
+class TestOrderLockedRamp:
+    """Order-5 tone tracked correctly under a linear speed ramp (900->1500 rpm)."""
+
+    def test_order_5_tone_survives_speed_ramp(self):
+        ar = AngularResampler()
+        vib_sr, rpm_sr, duration_s, target_orders = 64000, 4000, 4.0, 512
+
+        n_rpm = int(duration_s * rpm_sr)
+        k = np.arange(n_rpm)
+        rpm = 900 + 150 * (k / rpm_sr)  # rpm(t) = 900 + 150t
+
+        n_vib = int(duration_s * vib_sr)
+        t = np.arange(n_vib) / vib_sr
+        theta = 15 * t + 1.25 * t ** 2  # closed-form cumulative revolutions
+        x = np.cos(2 * np.pi * 5 * theta)  # order-5 tone
+
+        cumangle = ar.integrate_rpm(rpm, rpm_sr)
+        angular = ar.resample_to_angular(
+            x, vib_sr, cumangle, rpm_sr, target_orders, anti_alias=True
+        )
+
+        seg = angular[target_orders * 10: target_orders * 110]  # revolutions 10..110
+        spec = np.fft.rfft(seg)
+        amp = np.abs(spec) * 2 / len(seg)
+        orders = np.fft.rfftfreq(len(seg), d=1.0 / target_orders)
+
+        peak_idx = np.argmax(amp)
+        assert abs(orders[peak_idx] - 5.0) < 0.01
+        assert amp[peak_idx] > 0.95
+
+        power = amp ** 2
+        band = (orders >= 4.9) & (orders <= 5.1)
+        assert power[band].sum() / power.sum() > 0.99
+
+
+class TestAntiAliasing:
+    """A 12 kHz tone at constant 1500 rpm aliases to order 32 without the
+    anti-aliasing filter, and is suppressed with it."""
+
+    def _setup(self):
+        vib_sr, rpm_sr, duration_s, target_orders = 64000, 4000, 4.0, 512
+        rpm = np.full(int(duration_s * rpm_sr), 1500.0)
+        t = np.arange(int(duration_s * vib_sr)) / vib_sr
+        x = 0.5 * np.cos(2 * np.pi * 12000 * t)
+        return x, vib_sr, rpm, rpm_sr, target_orders
+
+    def _spectrum(self, angular, target_orders):
+        n = (len(angular) // target_orders) * target_orders
+        seg = angular[:n]
+        spec = np.fft.rfft(seg)
+        amp = np.abs(spec) * 2 / len(seg)
+        orders = np.fft.rfftfreq(len(seg), d=1.0 / target_orders)
+        return orders, amp
+
+    def test_anti_alias_suppresses_high_order_tone(self):
+        ar = AngularResampler()
+        x, vib_sr, rpm, rpm_sr, target_orders = self._setup()
+        cumangle = ar.integrate_rpm(rpm, rpm_sr)
+        angular = ar.resample_to_angular(x, vib_sr, cumangle, rpm_sr, target_orders, anti_alias=True)
+        orders, amp = self._spectrum(angular, target_orders)
+        assert amp[orders > 1].max() < 0.01
+
+    def test_no_anti_alias_leaves_aliased_tone(self):
+        """Documents the failure mode the filter prevents: 12 kHz at 25 Hz
+        shaft speed is order 480, which folds about the 512-sample angular
+        rate to order 32."""
+        ar = AngularResampler()
+        x, vib_sr, rpm, rpm_sr, target_orders = self._setup()
+        cumangle = ar.integrate_rpm(rpm, rpm_sr)
+        angular = ar.resample_to_angular(x, vib_sr, cumangle, rpm_sr, target_orders, anti_alias=False)
+        orders, amp = self._spectrum(angular, target_orders)
+        mask = orders > 1
+        peak_idx = np.argmax(amp[mask])
+        assert abs(orders[mask][peak_idx] - 32.0) < 1.0
+        assert amp[mask][peak_idx] > 0.3
+
+
+class TestScalarRpmBroadcast:
+    """A length-1 rpm channel (metadata-sourced nominal speed) should
+    broadcast to the same result as an explicit constant-rpm profile."""
+
+    def test_scalar_rpm_matches_explicit_constant_profile(self):
+        vib = np.random.randn(64000).astype(np.float64)
+        proc = _make_processor(target_orders=64, window_revolutions=2.0, window_overlap=0.0)
+
+        out_scalar = proc.process({"vibration": vib, "rpm": np.array([1500.0])})
+        out_explicit = proc.process({"vibration": vib, "rpm": np.full(4000, 1500.0)})
+
+        assert out_scalar.shape[0] == out_explicit.shape[0]
 
 
 # =====================================================================
@@ -359,6 +461,27 @@ class TestBuilderOrderTracking:
         assert isinstance(cfg.view, OrderSpectrumViewConfig)
         assert cfg.view.n_orders == 128
 
+    def test_build_from_dict_order_spectrum_window_function(self):
+        """Regression test: window_function was previously dropped by the
+        builder even though OrderSpectrumViewConfig defines the field."""
+        d = self._raw_order_dict()
+        d["view"] = {"type": "order_spectrum", "n_orders": 128, "window_function": "hann"}
+        cfg = build_processor_config(d)
+        assert cfg.view.window_function == "hann"
+
+    def test_build_from_dict_anti_alias_and_nominal_speed(self):
+        d = self._raw_order_dict()
+        d["angular"]["anti_alias"] = False
+        d["angular"]["nominal_speed_metadata_path"] = "condition.speed"
+        cfg = build_processor_config(d)
+        assert cfg.anti_alias is False
+        assert cfg.nominal_speed_metadata_path == "condition.speed"
+
+    def test_build_from_dict_anti_alias_default(self):
+        cfg = build_processor_config(self._raw_order_dict())
+        assert cfg.anti_alias is True
+        assert cfg.nominal_speed_metadata_path is None
+
     def test_unknown_type_raises(self):
         d = self._raw_order_dict()
         d["type"] = "unknown_processor"
@@ -376,12 +499,16 @@ class TestBuilderOrderTracking:
         assert isinstance(cfg, OrderTrackingProcessorConfig)
         assert cfg.name == "order_64k"
         assert cfg.target_orders == 512
+        assert cfg.anti_alias is True
+        assert cfg.nominal_speed_metadata_path == "condition.speed"
 
     def test_build_from_yaml_order_spec_64k(self):
         cfg = build_processor_config_from_yaml("configs/processors/order_spec_64k.yaml")
         assert isinstance(cfg, OrderTrackingProcessorConfig)
         assert isinstance(cfg.view, OrderSpectrumViewConfig)
         assert cfg.view.n_orders == 256
+        assert cfg.anti_alias is True
+        assert cfg.nominal_speed_metadata_path == "condition.speed"
 
     def test_build_from_yaml_order_spect_64k(self):
         cfg = build_processor_config_from_yaml("configs/processors/order_spect_64k.yaml")
@@ -389,6 +516,8 @@ class TestBuilderOrderTracking:
         assert isinstance(cfg.view, OrderSpectrogramViewConfig)
         assert cfg.view.n_fft == 256
         assert cfg.view.hop_length == 96
+        assert cfg.anti_alias is True
+        assert cfg.nominal_speed_metadata_path == "condition.speed"
 
     def test_create_processor_returns_order_tracking_processor(self):
         from representation import create_processor
@@ -478,6 +607,40 @@ class TestOrderTrackingProcessor:
         vib, _ = _synthetic_signals()
         with pytest.raises(KeyError):
             proc.process({"vibration": vib})   # rpm missing
+
+
+# =====================================================================
+# TestNominalSpeedSanityCheck
+# =====================================================================
+
+class TestNominalSpeedSanityCheck:
+    def test_matching_nominal_speed_passes(self):
+        proc = _make_processor(nominal_speed_metadata_path="condition.speed")
+        vib, rpm = _synthetic_signals(1500.0, 1.0, 64000, 4000)
+        meta = Metadata({"condition": {"speed": 1500}})
+        out = proc.process({"vibration": vib, "rpm": rpm}, metadata=meta)
+        assert isinstance(out, torch.Tensor)
+
+    def test_mismatched_nominal_speed_raises(self):
+        """Metadata speed given in Hz (25) instead of RPM (1500) should be caught."""
+        proc = _make_processor(nominal_speed_metadata_path="condition.speed")
+        vib, rpm = _synthetic_signals(1500.0, 1.0, 64000, 4000)
+        meta = Metadata({"condition": {"speed": 1500 / 60}})
+        with pytest.raises(ValueError, match="revolutions"):
+            proc.process({"vibration": vib, "rpm": rpm}, metadata=meta)
+
+    def test_no_metadata_skips_check(self):
+        proc = _make_processor(nominal_speed_metadata_path="condition.speed")
+        vib, rpm = _synthetic_signals(1500.0, 1.0, 64000, 4000)
+        out = proc.process({"vibration": vib, "rpm": rpm})  # metadata=None
+        assert isinstance(out, torch.Tensor)
+
+    def test_no_nominal_speed_path_skips_check_even_with_metadata(self):
+        proc = _make_processor()  # nominal_speed_metadata_path=None (default)
+        vib, rpm = _synthetic_signals(1500.0, 1.0, 64000, 4000)
+        meta = Metadata({"condition": {"speed": 1.0}})  # would fail if checked
+        out = proc.process({"vibration": vib, "rpm": rpm}, metadata=meta)
+        assert isinstance(out, torch.Tensor)
 
 
 # =====================================================================

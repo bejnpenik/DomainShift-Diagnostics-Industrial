@@ -30,9 +30,9 @@ defaults:
     fault_size: S0
     fault_arrangement: NR
     condition: N15
-    fault_combination: NO
-    fault_mode: NO
-    fault_characteristic: NO
+    fault_combination: "NO"
+    fault_mode: "NO"
+    fault_characteristic: "NO"
   resolve:
     sampling_rate: all
 
@@ -41,15 +41,15 @@ classes:
     fixed:
       fault_size: S0
       fault_arrangement: NR
-      fault_combination: NO
-      fault_mode: NO
-      fault_characteristic: NO
+      fault_combination: "NO"
+      fault_mode: "NO"
+      fault_characteristic: "NO"
     resolve:
       sampling_rate: all
 
 filters:
   exclude:
     fault_size: [S0, S4, S5]
-    fault_mode: NO
-    fault_characteristic: NO
-    fault_combination: NO
+    fault_mode: "NO"
+    fault_characteristic: "NO"
+    fault_combination: "NO"

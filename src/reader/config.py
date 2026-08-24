@@ -8,7 +8,8 @@ class MatChannelConfig(BaseModel):
     """A channel loaded from a .mat file or metadata."""
     source: str = "file"               # "file" or "metadata"
     key_template: str | None = None    # CWRU: "X{file_key}_{bearing_position}_time"
-    variable_index: int | None = None  # Paderborn: nested Y[idx]['Data']
+    variable_index: int | None = None  # Paderborn (positional, legacy): nested Y[idx]['Data']
+    variable_name: str | None = None   # Paderborn (preferred): matched by Y[i]['Name']
     field: str | None = None           # metadata source: dot-path e.g. "condition.speed"
     dtype: str = "float32"
 

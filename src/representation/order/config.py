@@ -67,7 +67,15 @@ class OrderTrackingProcessorConfig(BaseModel):
             on the uniform angular grid.
         window_revolutions: Window duration in shaft revolutions.
         window_overlap: Fractional overlap between consecutive windows [0, 1).
-        view: Output representation — raw_order or order_spectrum.
+        anti_alias: If True (default), apply a zero-phase Butterworth lowpass
+            filter before angular resampling, with a cutoff derived from the
+            slowest 1st-percentile instantaneous shaft speed in the recording.
+        nominal_speed_metadata_path: Optional dot-path into sample metadata
+            (e.g. "condition.speed") used to sanity-check the measured
+            integrated revolutions against a nominal RPM. None disables the
+            check.
+        view: Output representation — raw_order, order_spectrum, or
+            order_spectrogram.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -80,4 +88,6 @@ class OrderTrackingProcessorConfig(BaseModel):
     target_orders: int = Field(default=512, gt=0)
     window_revolutions: float = Field(default=5.0, gt=0)
     window_overlap: float = Field(default=0.2, ge=0, lt=1)
+    anti_alias: bool = True
+    nominal_speed_metadata_path: str | None = None
     view: OrderViewConfig

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import numpy as np
 import numpy.typing as npt
+import scipy.signal
+from scipy.integrate import cumulative_trapezoid
 
 
 class AngularResampler:
@@ -10,19 +12,26 @@ class AngularResampler:
     Pipeline:
         integrate_rpm  →  resample_to_angular  →  segment_angular
 
+    integrate_rpm integrates the RPM signal via trapezoidal quadrature into
+    cumulative shaft angle (revolutions), starting at exactly 0.0.
+
+    resample_to_angular applies a zero-phase Butterworth anti-aliasing
+    lowpass (scipy.signal.sosfiltfilt) before interpolating vibration onto
+    the uniform angular grid, with a cutoff derived from the slowest
+    1st-percentile instantaneous shaft speed in the recording. Disable via
+    anti_alias=False. A strictly decreasing cumulative shaft angle (corrupted
+    or negative RPM) raises ValueError before interpolation.
+
     Limitations (V1):
-        - RPM = 0 at any sample makes the cumulative angle flat at that point.
-          np.interp handles this gracefully (duplicate x values return the first
-          matching y), but the angular grid will over-sample that region.
-          Avoid using recordings with stationary intervals for order tracking.
-        - Interpolation is linear (np.interp). Upgrade to cubic via
-          scipy.interpolate.interp1d for better accuracy at high orders.
+        - Interpolation onto both the vibration and the angular grid is
+          linear (np.interp). Upgrade to cubic via scipy.interpolate.interp1d
+          for better accuracy at high orders.
     """
 
     def integrate_rpm(
         self, rpm_signal: npt.ArrayLike, rpm_sr: int
     ) -> np.ndarray:
-        """Integrate RPM → cumulative shaft angle in revolutions.
+        """Integrate RPM → cumulative shaft angle in revolutions (trapezoidal).
 
         Args:
             rpm_signal: 1D array of instantaneous speed in RPM, sampled at rpm_sr.
@@ -30,14 +39,12 @@ class AngularResampler:
 
         Returns:
             Monotonically non-decreasing 1D array of cumulative shaft angle in
-            revolutions, same length as rpm_signal. Element [n] is the total
-            angle reached at time n / rpm_sr.
+            revolutions, same length as rpm_signal, starting at exactly 0.0
+            (element [0] == 0.0). Element [n] is the total angle reached at
+            time n / rpm_sr.
         """
         rpm = np.asarray(rpm_signal, dtype=np.float64)
-        # Each sample contributes rpm[n] revolutions per minute over 1/rpm_sr seconds
-        # → rpm[n] / rpm_sr / 60 revolutions per sample
-        increments = rpm / (rpm_sr * 60.0)
-        return np.cumsum(increments)
+        return cumulative_trapezoid(rpm / 60.0, dx=1.0 / rpm_sr, initial=0.0)
 
     def resample_to_angular(
         self,
@@ -46,6 +53,7 @@ class AngularResampler:
         cumulative_angle_at_rpm_times: np.ndarray,
         rpm_sr: int,
         target_orders: int,
+        anti_alias: bool = True,
     ) -> np.ndarray:
         """Resample vibration from the time domain to a uniform angular grid.
 
@@ -58,14 +66,25 @@ class AngularResampler:
                 time axis).
             target_orders: Number of angular samples per revolution on the
                 uniform output grid (analogous to samples-per-second in time).
+            anti_alias: If True (default), apply a zero-phase Butterworth
+                lowpass (scipy.signal.sosfiltfilt) before interpolation, with
+                cutoff derived from the slowest 1st-percentile instantaneous
+                shaft speed. Skipped automatically if that cutoff is already
+                at or above the vibration Nyquist frequency. Set False to
+                disable — angular sampling above target_orders/2 * f_shaft
+                will then alias, with the alias location depending on speed.
 
         Returns:
             1D array of the vibration signal resampled onto a uniform angular
-            grid. Length ≈ total_revolutions × target_orders (may be slightly
-            less due to boundary alignment).
+            grid, with exact 1/target_orders sample spacing. Length ≈
+            total_revolutions × target_orders (may be slightly less due to
+            boundary alignment).
 
         Raises:
-            ValueError: If the vibration signal spans less than one revolution.
+            ValueError: If the vibration signal spans less than one revolution,
+                if the cumulative shaft angle is strictly decreasing anywhere
+                (corrupted or negative RPM data), or (when anti_alias=True) if
+                the estimated minimum shaft speed is non-positive.
         """
         vib = np.asarray(vibration, dtype=np.float64)
         n_vib = len(vib)
@@ -86,9 +105,39 @@ class AngularResampler:
                 "Increase recording length or reduce window_revolutions."
             )
 
-        # Uniform angular grid: target_orders samples per revolution
+        # Monotonicity guard: strict "< 0", not "<= 0". np.interp legitimately
+        # produces exactly-flat (diff == 0) runs at the tail whenever
+        # vib_sr > rpm_sr, since t_vib.max() > t_rpm.max() by construction and
+        # the tail is extrapolated flat — that is benign. Only a strictly
+        # decreasing angle indicates corrupted/negative RPM data.
+        if np.any(np.diff(angle_at_vib) < 0):
+            raise ValueError(
+                "Cumulative shaft angle is strictly decreasing somewhere in "
+                "the recording — this indicates corrupted or negative RPM "
+                "data (a non-positive speed region). Angular resampling "
+                "requires a non-decreasing cumulative shaft angle."
+            )
+
+        if anti_alias:
+            f_inst = np.gradient(angle_at_vib, 1.0 / vib_sr)
+            f_min = np.percentile(f_inst, 1.0)
+            if f_min <= 0:
+                raise ValueError(
+                    f"Estimated minimum instantaneous shaft speed is "
+                    f"non-positive ({f_min:.4f} rev/s) — cannot design an "
+                    "anti-aliasing filter. Check for stationary/near-zero-RPM "
+                    "regions in the recording."
+                )
+            cutoff_hz = 0.45 * target_orders * f_min
+            if cutoff_hz < vib_sr / 2:
+                sos = scipy.signal.butter(8, cutoff_hz, btype="low", fs=vib_sr, output="sos")
+                vib = scipy.signal.sosfiltfilt(sos, vib)
+
+        # Uniform angular grid: target_orders samples per revolution, with
+        # exact 1/target_orders spacing (arange avoids the sub-sample drift
+        # linspace(..., endpoint=False) accumulates over long recordings).
         n_angular = int(total_revolutions * target_orders)
-        uniform_angle = np.linspace(0.0, total_revolutions, n_angular, endpoint=False)
+        uniform_angle = np.arange(n_angular) / target_orders
 
         # Interpolate vibration onto the uniform angular grid
         return np.interp(uniform_angle, angle_at_vib, vib)

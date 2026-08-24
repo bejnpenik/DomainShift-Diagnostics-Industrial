@@ -548,7 +548,17 @@ class TestCollectionCWRURegression:
                         'fault_position': c.get_filter_value_from_description('fault_position', 'normal'),
                         'sampling_rate': c.get_filter_value_from_description('sampling_rate', '48k'),
                     }
-                )
+                ),
+                fe_inner: self.Rule(
+                    resolve={
+                        'fault_position': c.get_filter_value_from_description('fault_position', 'unknown'),
+                    }
+                ),
+                fe_ball: self.Rule(
+                    resolve={
+                        'fault_position': c.get_filter_value_from_description('fault_position', 'unknown'),
+                    }
+                ),
             },
             class_interactions={
                 fe_inner: self.Interactions.from_dict({'bearing_position': {1: {'sampling_rate': 1}}}),
@@ -583,7 +593,17 @@ class TestCollectionCWRURegression:
                         'fault_position': c.get_filter_value_from_description('fault_position', 'normal'),
                         'sampling_rate': c.get_filter_value_from_description('sampling_rate', '48k'),
                     }
-                )
+                ),
+                1: self.Rule(
+                    resolve={
+                        'fault_position': c.get_filter_value_from_description('fault_position', 'unknown'),
+                    }
+                ),
+                3: self.Rule(
+                    resolve={
+                        'fault_position': c.get_filter_value_from_description('fault_position', 'unknown'),
+                    }
+                ),
             },
             class_interactions={
                 1: self.Interactions.from_dict({'bearing_position': {1: {'sampling_rate': 1}}}),

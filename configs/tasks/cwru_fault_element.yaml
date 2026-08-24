@@ -9,7 +9,7 @@
 #   condition:        C1 (0HP), C2 (1HP), C3 (2HP), C4 (3HP)
 #   fault_size:       S0, S7, S14, S21, S28
 #   fault_element:    NR (normal), IR (inner ring), OR (outer ring), BA (ball)
-#   fault_position:   NR (normal), CE (centered), OG (orthogonal), OP (opposite)
+#   fault_position:   NR (normal), CE (centered), OG (orthogonal), OP (opposite), NA (unknown)
 #   sampling_rate:    12k, 48k
 
 collection: cwru
@@ -36,6 +36,12 @@ classes:
     resolve:
       fault_position: NR
       sampling_rate: 48k
+  IR:
+    resolve:
+      fault_position: NA   # unknown — inner-ring faults have no position designation
+  BA:
+    resolve:
+      fault_position: NA   # unknown — ball faults have no position designation
 
 class_interactions:
   IR:

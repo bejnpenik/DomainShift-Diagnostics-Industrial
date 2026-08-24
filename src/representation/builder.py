@@ -157,7 +157,8 @@ def _build_order_tracking_config(cfg: dict[str, Any]):
 
     YAML sections:
         channels  -> vibration/rpm reader channel names + sampling rates
-        angular   -> target_orders, window_revolutions, window_overlap
+        angular   -> target_orders, window_revolutions, window_overlap,
+                      anti_alias, nominal_speed_metadata_path
         view      -> raw_order | order_spectrum | order_spectrogram
     """
     from .order.config import (
@@ -186,7 +187,10 @@ def _build_order_tracking_config(cfg: dict[str, Any]):
             win_length=view_cfg.get("win_length", 256),
         )
     elif view_type == "order_spectrum":
-        view = OrderSpectrumViewConfig(n_orders=view_cfg.get("n_orders", 256))
+        view = OrderSpectrumViewConfig(
+            n_orders=view_cfg.get("n_orders", 256),
+            window_function=view_cfg.get("window_function", "none"),
+        )
     else:
         raise ValueError(
             f"Unknown order tracking view type: '{view_type}'. "
@@ -202,6 +206,8 @@ def _build_order_tracking_config(cfg: dict[str, Any]):
         target_orders=angular.get("target_orders", 512),
         window_revolutions=angular.get("window_revolutions", 5.0),
         window_overlap=angular.get("window_overlap", 0.2),
+        anti_alias=angular.get("anti_alias", True),
+        nominal_speed_metadata_path=angular.get("nominal_speed_metadata_path"),
         view=view,
     )
 

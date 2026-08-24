@@ -55,6 +55,7 @@ header:
     1: {name: centered,   alias: CE, value: centered}
     2: {name: orthogonal, alias: OG, value: orthogonal}
     3: {name: opposite,   alias: OP, value: opposite}
+    4: {name: unknown,     alias: NA, value: unknown}
   sampling_rate:
     1: {name: 12000 Hz, alias: 12k, value: 12000}
     2: {name: 48000 Hz, alias: 48k, value: 48000}
@@ -120,1098 +121,1098 @@ files:
     bearing_position: DE
     condition: C1
     fault_size: S7
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 12k
   106:
     bearing_position: DE
     condition: C2
     fault_size: S7
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 12k
   107:
     bearing_position: DE
     condition: C3
     fault_size: S7
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 12k
   108:
     bearing_position: DE
     condition: C4
     fault_size: S7
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 12k
   109:
     bearing_position: DE
     condition: C1
     fault_size: S7
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 48k
   110:
     bearing_position: DE
     condition: C2
     fault_size: S7
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 48k
   111:
     bearing_position: DE
     condition: C3
     fault_size: S7
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 48k
   112:
     bearing_position: DE
     condition: C4
     fault_size: S7
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 48k
   118:
     bearing_position: DE
     condition: C1
     fault_size: S7
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 12k
   119:
     bearing_position: DE
     condition: C2
     fault_size: S7
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 12k
   120:
     bearing_position: DE
     condition: C3
     fault_size: S7
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 12k
   121:
     bearing_position: DE
     condition: C4
     fault_size: S7
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 12k
   122:
     bearing_position: DE
     condition: C1
     fault_size: S7
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 48k
   123:
     bearing_position: DE
     condition: C2
     fault_size: S7
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 48k
   124:
     bearing_position: DE
     condition: C3
     fault_size: S7
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 48k
   125:
     bearing_position: DE
     condition: C4
     fault_size: S7
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 48k
   130:
     bearing_position: DE
     condition: C1
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: CE
     sampling_rate: 12k
   131:
     bearing_position: DE
     condition: C2
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: CE
     sampling_rate: 12k
   132:
     bearing_position: DE
     condition: C3
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: CE
     sampling_rate: 12k
   133:
     bearing_position: DE
     condition: C4
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: CE
     sampling_rate: 12k
   135:
     bearing_position: DE
     condition: C1
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: CE
     sampling_rate: 48k
   136:
     bearing_position: DE
     condition: C2
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: CE
     sampling_rate: 48k
   137:
     bearing_position: DE
     condition: C3
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: CE
     sampling_rate: 48k
   138:
     bearing_position: DE
     condition: C4
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: CE
     sampling_rate: 48k
   144:
     bearing_position: DE
     condition: C1
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: OG
     sampling_rate: 12k
   145:
     bearing_position: DE
     condition: C2
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: OG
     sampling_rate: 12k
   146:
     bearing_position: DE
     condition: C3
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: OG
     sampling_rate: 12k
   147:
     bearing_position: DE
     condition: C4
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: OG
     sampling_rate: 12k
   148:
     bearing_position: DE
     condition: C1
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: OG
     sampling_rate: 48k
   149:
     bearing_position: DE
     condition: C2
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: OG
     sampling_rate: 48k
   150:
     bearing_position: DE
     condition: C3
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: OG
     sampling_rate: 48k
   151:
     bearing_position: DE
     condition: C4
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: OG
     sampling_rate: 48k
   156:
     bearing_position: DE
     condition: C1
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: OP
     sampling_rate: 12k
   158:
     bearing_position: DE
     condition: C2
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: OP
     sampling_rate: 12k
   159:
     bearing_position: DE
     condition: C3
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: OP
     sampling_rate: 12k
   160:
     bearing_position: DE
     condition: C4
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: OP
     sampling_rate: 12k
   161:
     bearing_position: DE
     condition: C1
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: OP
     sampling_rate: 48k
   162:
     bearing_position: DE
     condition: C2
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: OP
     sampling_rate: 48k
   163:
     bearing_position: DE
     condition: C3
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: OP
     sampling_rate: 48k
   164:
     bearing_position: DE
     condition: C4
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: OP
     sampling_rate: 48k
   169:
     bearing_position: DE
     condition: C1
     fault_size: S14
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 12k
   170:
     bearing_position: DE
     condition: C2
     fault_size: S14
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 12k
   171:
     bearing_position: DE
     condition: C3
     fault_size: S14
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 12k
   172:
     bearing_position: DE
     condition: C4
     fault_size: S14
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 12k
   174:
     bearing_position: DE
     condition: C1
     fault_size: S14
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 48k
   175:
     bearing_position: DE
     condition: C2
     fault_size: S14
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 48k
   176:
     bearing_position: DE
     condition: C3
     fault_size: S14
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 48k
   177:
     bearing_position: DE
     condition: C4
     fault_size: S14
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 48k
   185:
     bearing_position: DE
     condition: C1
     fault_size: S14
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 12k
   186:
     bearing_position: DE
     condition: C2
     fault_size: S14
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 12k
   187:
     bearing_position: DE
     condition: C3
     fault_size: S14
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 12k
   188:
     bearing_position: DE
     condition: C4
     fault_size: S14
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 12k
   189:
     bearing_position: DE
     condition: C1
     fault_size: S14
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 48k
   190:
     bearing_position: DE
     condition: C2
     fault_size: S14
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 48k
   191:
     bearing_position: DE
     condition: C3
     fault_size: S14
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 48k
   192:
     bearing_position: DE
     condition: C4
     fault_size: S14
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 48k
   197:
     bearing_position: DE
     condition: C1
     fault_size: S14
-    fault_element: BA
+    fault_element: OR
     fault_position: CE
     sampling_rate: 12k
   198:
     bearing_position: DE
     condition: C2
     fault_size: S14
-    fault_element: BA
+    fault_element: OR
     fault_position: CE
     sampling_rate: 12k
   199:
     bearing_position: DE
     condition: C3
     fault_size: S14
-    fault_element: BA
+    fault_element: OR
     fault_position: CE
     sampling_rate: 12k
   200:
     bearing_position: DE
     condition: C4
     fault_size: S14
-    fault_element: BA
+    fault_element: OR
     fault_position: CE
     sampling_rate: 12k
   201:
     bearing_position: DE
     condition: C1
     fault_size: S14
-    fault_element: BA
+    fault_element: OR
     fault_position: CE
     sampling_rate: 48k
   202:
     bearing_position: DE
     condition: C2
     fault_size: S14
-    fault_element: BA
+    fault_element: OR
     fault_position: CE
     sampling_rate: 48k
   203:
     bearing_position: DE
     condition: C3
     fault_size: S14
-    fault_element: BA
+    fault_element: OR
     fault_position: CE
     sampling_rate: 48k
   204:
     bearing_position: DE
     condition: C4
     fault_size: S14
-    fault_element: BA
+    fault_element: OR
     fault_position: CE
     sampling_rate: 48k
   209:
     bearing_position: DE
     condition: C1
     fault_size: S21
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 12k
   210:
     bearing_position: DE
     condition: C2
     fault_size: S21
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 12k
   211:
     bearing_position: DE
     condition: C3
     fault_size: S21
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 12k
   212:
     bearing_position: DE
     condition: C4
     fault_size: S21
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 12k
   213:
     bearing_position: DE
     condition: C1
     fault_size: S21
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 48k
   214:
     bearing_position: DE
     condition: C2
     fault_size: S21
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 48k
   215:
     bearing_position: DE
     condition: C3
     fault_size: S21
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 48k
   217:
     bearing_position: DE
     condition: C4
     fault_size: S21
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 48k
   222:
     bearing_position: DE
     condition: C1
     fault_size: S21
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 12k
   223:
     bearing_position: DE
     condition: C2
     fault_size: S21
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 12k
   224:
     bearing_position: DE
     condition: C3
     fault_size: S21
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 12k
   225:
     bearing_position: DE
     condition: C4
     fault_size: S21
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 12k
   226:
     bearing_position: DE
     condition: C1
     fault_size: S21
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 48k
   227:
     bearing_position: DE
     condition: C2
     fault_size: S21
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 48k
   228:
     bearing_position: DE
     condition: C3
     fault_size: S21
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 48k
   229:
     bearing_position: DE
     condition: C4
     fault_size: S21
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 48k
   234:
     bearing_position: DE
     condition: C1
     fault_size: S21
-    fault_element: BA
+    fault_element: OR
     fault_position: CE
     sampling_rate: 12k
   235:
     bearing_position: DE
     condition: C2
     fault_size: S21
-    fault_element: BA
+    fault_element: OR
     fault_position: CE
     sampling_rate: 12k
   236:
     bearing_position: DE
     condition: C3
     fault_size: S21
-    fault_element: BA
+    fault_element: OR
     fault_position: CE
     sampling_rate: 12k
   237:
     bearing_position: DE
     condition: C4
     fault_size: S21
-    fault_element: BA
+    fault_element: OR
     fault_position: CE
     sampling_rate: 12k
   238:
     bearing_position: DE
     condition: C1
     fault_size: S21
-    fault_element: BA
+    fault_element: OR
     fault_position: CE
     sampling_rate: 48k
   239:
     bearing_position: DE
     condition: C2
     fault_size: S21
-    fault_element: BA
+    fault_element: OR
     fault_position: CE
     sampling_rate: 48k
   240:
     bearing_position: DE
     condition: C3
     fault_size: S21
-    fault_element: BA
+    fault_element: OR
     fault_position: CE
     sampling_rate: 48k
   241:
     bearing_position: DE
     condition: C4
     fault_size: S21
-    fault_element: BA
+    fault_element: OR
     fault_position: CE
     sampling_rate: 48k
   246:
     bearing_position: DE
     condition: C1
     fault_size: S21
-    fault_element: BA
+    fault_element: OR
     fault_position: OG
     sampling_rate: 12k
   247:
     bearing_position: DE
     condition: C2
     fault_size: S21
-    fault_element: BA
+    fault_element: OR
     fault_position: OG
     sampling_rate: 12k
   248:
     bearing_position: DE
     condition: C3
     fault_size: S21
-    fault_element: BA
+    fault_element: OR
     fault_position: OG
     sampling_rate: 12k
   249:
     bearing_position: DE
     condition: C4
     fault_size: S21
-    fault_element: BA
+    fault_element: OR
     fault_position: OG
     sampling_rate: 12k
   250:
     bearing_position: DE
     condition: C1
     fault_size: S21
-    fault_element: BA
+    fault_element: OR
     fault_position: OG
     sampling_rate: 48k
   251:
     bearing_position: DE
     condition: C2
     fault_size: S21
-    fault_element: BA
+    fault_element: OR
     fault_position: OG
     sampling_rate: 48k
   252:
     bearing_position: DE
     condition: C3
     fault_size: S21
-    fault_element: BA
+    fault_element: OR
     fault_position: OG
     sampling_rate: 48k
   253:
     bearing_position: DE
     condition: C4
     fault_size: S21
-    fault_element: BA
+    fault_element: OR
     fault_position: OG
     sampling_rate: 48k
   258:
     bearing_position: DE
     condition: C1
     fault_size: S21
-    fault_element: BA
+    fault_element: OR
     fault_position: OP
     sampling_rate: 12k
   259:
     bearing_position: DE
     condition: C2
     fault_size: S21
-    fault_element: BA
+    fault_element: OR
     fault_position: OP
     sampling_rate: 12k
   260:
     bearing_position: DE
     condition: C3
     fault_size: S21
-    fault_element: BA
+    fault_element: OR
     fault_position: OP
     sampling_rate: 12k
   261:
     bearing_position: DE
     condition: C4
     fault_size: S21
-    fault_element: BA
+    fault_element: OR
     fault_position: OP
     sampling_rate: 12k
   262:
     bearing_position: DE
     condition: C1
     fault_size: S21
-    fault_element: BA
+    fault_element: OR
     fault_position: OP
     sampling_rate: 48k
   263:
     bearing_position: DE
     condition: C2
     fault_size: S21
-    fault_element: BA
+    fault_element: OR
     fault_position: OP
     sampling_rate: 48k
   264:
     bearing_position: DE
     condition: C3
     fault_size: S21
-    fault_element: BA
+    fault_element: OR
     fault_position: OP
     sampling_rate: 48k
   265:
     bearing_position: DE
     condition: C4
     fault_size: S21
-    fault_element: BA
+    fault_element: OR
     fault_position: OP
     sampling_rate: 48k
   270:
     bearing_position: FE
     condition: C1
     fault_size: S21
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 12k
   271:
     bearing_position: FE
     condition: C2
     fault_size: S21
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 12k
   272:
     bearing_position: FE
     condition: C3
     fault_size: S21
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 12k
   273:
     bearing_position: FE
     condition: C4
     fault_size: S21
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 12k
   274:
     bearing_position: FE
     condition: C1
     fault_size: S14
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 12k
   275:
     bearing_position: FE
     condition: C2
     fault_size: S14
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 12k
   276:
     bearing_position: FE
     condition: C3
     fault_size: S14
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 12k
   277:
     bearing_position: FE
     condition: C4
     fault_size: S14
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 12k
   278:
     bearing_position: FE
     condition: C1
     fault_size: S7
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 12k
   279:
     bearing_position: FE
     condition: C2
     fault_size: S7
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 12k
   280:
     bearing_position: FE
     condition: C3
     fault_size: S7
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 12k
   281:
     bearing_position: FE
     condition: C4
     fault_size: S7
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 12k
   282:
     bearing_position: FE
     condition: C1
     fault_size: S7
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 12k
   283:
     bearing_position: FE
     condition: C2
     fault_size: S7
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 12k
   284:
     bearing_position: FE
     condition: C3
     fault_size: S7
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 12k
   285:
     bearing_position: FE
     condition: C4
     fault_size: S7
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 12k
   286:
     bearing_position: FE
     condition: C1
     fault_size: S14
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 12k
   287:
     bearing_position: FE
     condition: C2
     fault_size: S14
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 12k
   288:
     bearing_position: FE
     condition: C3
     fault_size: S14
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 12k
   289:
     bearing_position: FE
     condition: C4
     fault_size: S14
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 12k
   290:
     bearing_position: FE
     condition: C1
     fault_size: S21
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 12k
   291:
     bearing_position: FE
     condition: C2
     fault_size: S21
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 12k
   292:
     bearing_position: FE
     condition: C3
     fault_size: S21
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 12k
   293:
     bearing_position: FE
     condition: C4
     fault_size: S21
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 12k
   294:
     bearing_position: FE
     condition: C1
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: CE
     sampling_rate: 12k
   295:
     bearing_position: FE
     condition: C2
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: CE
     sampling_rate: 12k
   296:
     bearing_position: FE
     condition: C3
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: CE
     sampling_rate: 12k
   297:
     bearing_position: FE
     condition: C4
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: CE
     sampling_rate: 12k
   298:
     bearing_position: FE
     condition: C1
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: OG
     sampling_rate: 12k
   299:
     bearing_position: FE
     condition: C2
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: OG
     sampling_rate: 12k
   300:
     bearing_position: FE
     condition: C3
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: OG
     sampling_rate: 12k
   301:
     bearing_position: FE
     condition: C4
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: OG
     sampling_rate: 12k
   302:
     bearing_position: FE
     condition: C1
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: OP
     sampling_rate: 12k
   305:
     bearing_position: FE
     condition: C2
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: OP
     sampling_rate: 12k
   306:
     bearing_position: FE
     condition: C3
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: OP
     sampling_rate: 12k
   307:
     bearing_position: FE
     condition: C4
     fault_size: S7
-    fault_element: BA
+    fault_element: OR
     fault_position: OP
     sampling_rate: 12k
   309:
     bearing_position: FE
     condition: C2
     fault_size: S14
-    fault_element: BA
+    fault_element: OR
     fault_position: OG
     sampling_rate: 12k
   310:
     bearing_position: FE
     condition: C1
     fault_size: S14
-    fault_element: BA
+    fault_element: OR
     fault_position: OG
     sampling_rate: 12k
   311:
     bearing_position: FE
     condition: C3
     fault_size: S14
-    fault_element: BA
+    fault_element: OR
     fault_position: OG
     sampling_rate: 12k
   312:
     bearing_position: FE
     condition: C4
     fault_size: S14
-    fault_element: BA
+    fault_element: OR
     fault_position: OG
     sampling_rate: 12k
   313:
     bearing_position: FE
     condition: C1
     fault_size: S14
-    fault_element: BA
+    fault_element: OR
     fault_position: CE
     sampling_rate: 12k
   315:
     bearing_position: FE
     condition: C1
     fault_size: S21
-    fault_element: BA
+    fault_element: OR
     fault_position: CE
     sampling_rate: 12k
   316:
     bearing_position: FE
     condition: C2
     fault_size: S21
-    fault_element: BA
+    fault_element: OR
     fault_position: OG
     sampling_rate: 12k
   317:
     bearing_position: FE
     condition: C3
     fault_size: S21
-    fault_element: BA
+    fault_element: OR
     fault_position: OG
     sampling_rate: 12k
   318:
     bearing_position: FE
     condition: C4
     fault_size: S21
-    fault_element: BA
+    fault_element: OR
     fault_position: OG
     sampling_rate: 12k
   3001:
     bearing_position: DE
     condition: C1
     fault_size: S28
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 12k
   3002:
     bearing_position: DE
     condition: C2
     fault_size: S28
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 12k
   3003:
     bearing_position: DE
     condition: C3
     fault_size: S28
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 12k
   3004:
     bearing_position: DE
     condition: C4
     fault_size: S28
-    fault_element: OR
-    fault_position: CE
+    fault_element: IR
+    fault_position: NA
     sampling_rate: 12k
   3005:
     bearing_position: DE
     condition: C1
     fault_size: S28
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 12k
   3006:
     bearing_position: DE
     condition: C2
     fault_size: S28
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 12k
   3007:
     bearing_position: DE
     condition: C3
     fault_size: S28
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 12k
   3008:
     bearing_position: DE
     condition: C4
     fault_size: S28
-    fault_element: IR
-    fault_position: CE
+    fault_element: BA
+    fault_position: NA
     sampling_rate: 12k

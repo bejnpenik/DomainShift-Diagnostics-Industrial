@@ -78,19 +78,24 @@ class DatasetCollection:
 
             subdirectory = ''
 
+            exclude_realizations = set()
+
             if isinstance(vals, dict):
                 realizations = vals.get('realizations', 1)
 
                 subdirectory = vals.get('subdirectory', '')
 
+                exclude_realizations = set(vals.get('exclude_realizations', []))
+
             base = self.dirname / subdirectory / f'{item}.{self.filetype}'
 
             fnames = []
-            
+
             if realizations > 1:
                 fnames.extend(
                     str(base.with_name(f'{item}_{i}.{self.filetype}'))
                     for i in range(1, realizations + 1)
+                    if i not in exclude_realizations
                 )
             else:
                 fnames.append(str(base))
@@ -290,10 +295,14 @@ class DatasetCollection:
 
                     subdirectory = ''
 
+                    exclude_realizations = set()
+
                     if isinstance(file_entry, dict):
                         realizations = file_entry.get('realizations', 1)
 
                         subdirectory = file_entry.get('subdirectory', '')
+
+                        exclude_realizations = set(file_entry.get('exclude_realizations', []))
 
 
                     base = self.dirname / subdirectory / f'{fname}.{self.filetype}'
@@ -302,6 +311,7 @@ class DatasetCollection:
                         fnames.extend(
                             str(base.with_name(f'{fname}_{i}.{self.filetype}'))
                             for i in range(1, realizations + 1)
+                            if i not in exclude_realizations
                         )
                     else:
                         fnames.append(str(base))
